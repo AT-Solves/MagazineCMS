@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lumi CMS — Magazine OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #FFF8F0;
+    --cream-2: #FFF1E2;
+    --peach: #FFD4B8;
+    --peach-deep: #FFB088;
+    --mint: #C7EFD3;
+    --mint-deep: #8BD9A8;
+    --sky: #CDE7F5;
+    --sky-deep: #8FC8E8;
+    --lavender: #E4D4F4;
+    --lavender-deep: #B89DDB;
+    --sun: #FFE9A8;
+    --sun-deep: #F5C95E;
+    --pink: #FFD3DC;
+    --pink-deep: #F58FA6;
+    --ink: #4A3F55;
+    --ink-soft: #6F6480;
+    --ink-line: #E9E0D2;
+    --white: #ffffff;
+    --green: #2d9b6c;
+    --amber: #d68910;
+    --red: #d35454;
+    --shadow-soft: 0 8px 24px rgba(180, 150, 120, 0.15);
+    --shadow-pop: 0 12px 36px rgba(180, 130, 90, 0.22);
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --radius-sm: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Quicksand', system-ui, sans-serif;
+    background:
+      radial-gradient(900px 500px at 5% -5%, var(--peach) 0%, transparent 55%),
+      radial-gradient(1000px 500px at 110% 0%, var(--mint) 0%, transparent 55%),
+      radial-gradient(900px 500px at 50% 110%, var(--lavender) 0%, transparent 50%),
+      var(--cream);
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 { font-family: 'Fredoka', sans-serif; font-weight: 600; letter-spacing: -.01em; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, textarea, select {
+    font-family: inherit; font-size: 14px; padding: 10px 14px;
+    border-radius: var(--radius-sm); border: 2px solid var(--ink-line);
+    background: var(--white); color: var(--ink); width: 100%;
+    transition: border-color .2s;
+  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--peach-deep); }
+  label { font-size: 12px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 6px; }
+  a { color: var(--lavender-deep); cursor: pointer; }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 10px 20px; border-radius: 999px; font-weight: 700; font-size: 13px;
+    transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary { background: var(--ink); color: var(--cream); box-shadow: var(--shadow-pop); }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-ghost { background: var(--white); color: var(--ink); box-shadow: var(--shadow-soft); }
+  .btn-ghost:hover { transform: translateY(-2px); }
+  .btn-mint { background: var(--mint-deep); color: var(--white); }
+  .btn-peach { background: var(--peach-deep); color: var(--white); }
+  .btn-danger { background: #fff; color: var(--red); border: 2px solid #f5d8d8; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  /* ╔════════════════════════════╗
+     ║         LOGIN              ║
+     ╚════════════════════════════╝ */
+  .login-shell {
+    min-height: 100vh;
+    display: grid; place-items: center;
+    padding: 24px;
+  }
+  .login-card {
+    background: var(--white);
+    border-radius: 32px;
+    box-shadow: var(--shadow-pop);
+    padding: 40px;
+    width: 100%; max-width: 420px;
+    border: 1px solid rgba(255,255,255,0.9);
+  }
+  .login-logo {
+    display: flex; align-items: center; gap: 12px; justify-content: center;
+    margin-bottom: 22px;
+  }
+  .login-logo .mark {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--peach), var(--sun), var(--mint), var(--sky), var(--lavender), var(--peach));
+    display: grid; place-items: center;
+    box-shadow: inset 0 0 0 4px var(--white), var(--shadow-soft);
+    font-size: 22px;
+  }
+  .login-logo h1 { font-size: 26px; }
+  .login-sub { text-align: center; color: var(--ink-soft); font-size: 14px; margin-bottom: 24px; }
+  .role-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
+  .role-tab {
+    padding: 14px; border-radius: var(--radius-md);
+    background: var(--cream-2); font-weight: 700; font-size: 14px;
+    border: 2px solid transparent; transition: all .2s;
+    text-align: center;
+  }
+  .role-tab.active { background: var(--white); border-color: var(--peach-deep); box-shadow: var(--shadow-soft); }
+  .role-tab .em { font-size: 26px; display: block; margin-bottom: 6px; }
+  .form-row { margin-bottom: 14px; }
+  .login-card .btn-primary { width: 100%; justify-content: center; padding: 12px; margin-top: 8px; }
+  .hint { background: var(--cream-2); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--ink-soft); margin-top: 16px; }
+  .hint strong { color: var(--ink); }
+  .err { color: var(--red); font-size: 13px; margin-top: 8px; text-align: center; min-height: 16px; }
+
+  /* ╔════════════════════════════╗
+     ║       APP SHELL            ║
+     ╚════════════════════════════╝ */
+  .app-shell { display: none; min-height: 100vh; }
+  .app-shell.active { display: grid; grid-template-columns: 240px 1fr; }
+  .sidebar {
+    background: var(--white);
+    border-right: 1px solid var(--ink-line);
+    padding: 24px 16px;
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .side-logo { display: flex; gap: 10px; align-items: center; padding: 0 8px; margin-bottom: 28px; }
+  .side-logo .mark {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--peach), var(--sun), var(--mint), var(--sky), var(--lavender), var(--peach));
+    display: grid; place-items: center;
+    box-shadow: inset 0 0 0 3px var(--white);
+    font-size: 16px;
+  }
+  .side-logo span { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 19px; }
+  .side-section { font-size: 11px; font-weight: 800; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.08em; padding: 12px 12px 6px; }
+  .side-link {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 10px;
+    font-weight: 600; font-size: 14px; color: var(--ink-soft);
+    transition: all .2s;
+    width: 100%; text-align: left;
+  }
+  .side-link:hover { background: var(--cream-2); color: var(--ink); }
+  .side-link.active { background: var(--cream-2); color: var(--ink); }
+  .side-link .em { width: 22px; text-align: center; }
+  .side-foot {
+    margin-top: auto; padding: 12px;
+    border-top: 1px dashed var(--ink-line);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .side-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--peach), var(--pink));
+    display: grid; place-items: center;
+  }
+  .side-foot .name { font-weight: 700; font-size: 13px; }
+  .side-foot .role { font-size: 11px; color: var(--ink-soft); }
+  .logout-btn { margin-left: auto; font-size: 12px; color: var(--ink-soft); padding: 6px 10px; border-radius: 6px; }
+  .logout-btn:hover { background: var(--cream-2); color: var(--red); }
+
+  .content-area { padding: 28px 32px; max-width: 1280px; }
+  .page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
+  .page-head h1 { font-size: 26px; }
+  .page-head p.sub { color: var(--ink-soft); font-size: 13px; margin-top: 4px; }
+
+  /* ── Cards/Panels ── */
+  .panel {
+    background: var(--white); border-radius: var(--radius-lg);
+    padding: 22px; box-shadow: var(--shadow-soft);
+    border: 1px solid rgba(255,255,255,0.9);
+    margin-bottom: 18px;
+  }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .panel-head h3 { font-size: 17px; }
+  .panel-head .help { font-size: 12px; color: var(--ink-soft); }
+
+  /* ── Grid layouts ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 900px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .app-shell.active { grid-template-columns: 1fr; }
+    .sidebar { position: relative; height: auto; flex-direction: row; flex-wrap: wrap; }
+  }
+
+  /* ── Stat cards ── */
+  .stat {
+    background: linear-gradient(135deg, var(--white), var(--cream-2));
+    border-radius: var(--radius-lg); padding: 18px;
+    box-shadow: var(--shadow-soft);
+  }
+  .stat .label { font-size: 11px; font-weight: 800; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.07em; }
+  .stat .value { font-size: 28px; font-weight: 700; margin-top: 6px; font-family: 'Fredoka', sans-serif; }
+  .stat .delta { font-size: 12px; margin-top: 4px; color: var(--green); }
+
+  /* ── Issue / story rows ── */
+  .row {
+    background: var(--white); border-radius: var(--radius-md);
+    padding: 14px 16px; display: flex; align-items: center; gap: 14px;
+    border: 1px solid var(--ink-line);
+    margin-bottom: 10px;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .row:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
+  .row .thumb {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: grid; place-items: center; font-size: 22px;
+    background: var(--cream-2); flex-shrink: 0;
+  }
+  .row .meta { flex: 1; min-width: 0; }
+  .row .meta h4 { font-size: 15px; margin-bottom: 2px; }
+  .row .meta p { color: var(--ink-soft); font-size: 12px; }
+  .row .actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .badge-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
+  }
+  .b-draft { background: #FFF1E2; color: #8a6c3a; }
+  .b-published { background: var(--mint); color: #1f5d3f; }
+  .b-scheduled { background: var(--sky); color: #2a5a78; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab {
+    padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 13px;
+    background: var(--cream-2); color: var(--ink-soft);
+  }
+  .tab.active { background: var(--ink); color: var(--cream); }
+
+  /* ── Drawer / modal ── */
+  .drawer-wrap { position: fixed; inset: 0; display: none; z-index: 200; }
+  .drawer-wrap.open { display: block; }
+  .drawer-bg { position: absolute; inset: 0; background: rgba(74,63,85,.35); backdrop-filter: blur(2px); }
+  .drawer {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 560px; max-width: 95vw;
+    background: var(--cream); padding: 28px;
+    overflow-y: auto;
+    box-shadow: -12px 0 40px rgba(0,0,0,.12);
+    animation: slideIn .3s ease;
+  }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .close-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--white); box-shadow: var(--shadow-soft);
+    display: grid; place-items: center;
+  }
+
+  /* ── Form rows ── */
+  .field { margin-bottom: 14px; }
+  textarea.tall { min-height: 180px; resize: vertical; }
+  .checks { display: flex; gap: 10px; flex-wrap: wrap; }
+  .check {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; background: var(--cream-2); border-radius: 999px;
+    cursor: pointer; font-size: 12px; font-weight: 600;
+  }
+  .check input { width: auto; }
+
+  /* ── SEO / a11y panel ── */
+  .lint {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 14px; border-radius: var(--radius-sm);
+    background: var(--cream-2); margin-bottom: 8px; font-size: 13px;
+  }
+  .lint .ico { font-size: 16px; flex-shrink: 0; }
+  .lint.pass { background: #E5F5EC; color: #1f5d3f; }
+  .lint.warn { background: #FFF1D6; color: #8a6c3a; }
+  .lint.fail { background: #FCE3E3; color: #8a3030; }
+  .progress { background: var(--cream-2); height: 10px; border-radius: 999px; overflow: hidden; }
+  .progress > div { height: 100%; background: linear-gradient(90deg, var(--mint-deep), var(--peach-deep)); transition: width .4s; }
+
+  /* ── Code preview ── */
+  pre.code {
+    background: #2d2435; color: #e9e0d2;
+    padding: 16px; border-radius: var(--radius-sm);
+    font-family: 'Courier New', monospace; font-size: 12px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* ── Reader portal frame ── */
+  .reader-frame {
+    background: var(--cream);
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+  .reader-topbar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 32px;
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--ink-line);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .reader-topbar .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Fredoka', sans-serif; font-size: 20px; font-weight: 600;
+  }
+  .reader-topbar .logo .mark {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--peach), var(--sun), var(--mint), var(--sky), var(--lavender), var(--peach));
+    display: grid; place-items: center; font-size: 14px;
+    box-shadow: inset 0 0 0 3px var(--white);
+  }
+  .reader-nav { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+  .reader-nav a { padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 13px; color: var(--ink-soft); }
+  .reader-nav a:hover, .reader-nav a.active { background: var(--cream-2); color: var(--ink); }
+
+  .reader-hero {
+    max-width: 1100px; margin: 32px auto 24px; padding: 0 28px;
+  }
+  .reader-hero .pill {
+    display: inline-flex; gap: 6px; align-items: center;
+    background: var(--mint); color: #2d6a47; padding: 6px 12px;
+    border-radius: 999px; font-size: 12px; font-weight: 700; margin-bottom: 10px;
+  }
+  .reader-hero h1 { font-size: clamp(28px, 4.5vw, 46px); line-height: 1.1; }
+  .reader-hero p { color: var(--ink-soft); margin-top: 10px; max-width: 600px; line-height: 1.55; }
+
+  .reader-grid { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+  .stories-grid {
+    display: grid; gap: 18px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+  .scard {
+    background: var(--white); border-radius: var(--radius-lg);
+    overflow: hidden; box-shadow: var(--shadow-soft); cursor: pointer;
+    transition: transform .25s, box-shadow .25s;
+  }
+  .scard:hover { transform: translateY(-5px); box-shadow: var(--shadow-pop); }
+  .scard-cover { height: 150px; display: grid; place-items: center; font-size: 60px; }
+  .scard-body { padding: 16px; }
+  .scard-tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--cream-2); color: var(--ink-soft); margin-bottom: 6px; }
+  .scard h3 { font-size: 16px; margin-bottom: 4px; }
+  .scard p { font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
+
+  .reader-footer {
+    margin-top: 60px; padding: 30px 28px;
+    background: var(--white);
+    border-top: 1px solid var(--ink-line);
+  }
+  .reader-footer-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 32px; }
+  .reader-footer h4 { font-size: 14px; margin-bottom: 8px; }
+  .reader-footer a { display: block; color: var(--ink-soft); font-size: 13px; padding: 4px 0; }
+  .reader-footer a:hover { color: var(--ink); }
+  .reader-footer .copy { color: var(--ink-soft); font-size: 12px; margin-top: 12px; }
+  @media (max-width: 700px) { .reader-footer-inner { grid-template-columns: 1fr; } }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--ink-soft); }
+  .empty-state .big { font-size: 60px; display: block; margin-bottom: 12px; }
+
+  /* ── Story modal reader ── */
+  .story-modal-bg { position: fixed; inset: 0; background: rgba(74,63,85,.5); backdrop-filter: blur(4px); display: none; z-index: 300; }
+  .story-modal-bg.open { display: grid; place-items: center; padding: 20px; }
+  .story-modal {
+    background: var(--white); border-radius: var(--radius-lg);
+    max-width: 760px; width: 100%; max-height: 90vh; overflow: hidden;
+    display: flex; flex-direction: column;
+    box-shadow: var(--shadow-pop);
+    animation: pop .3s ease;
+  }
+  @keyframes pop { from { transform: scale(.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .story-mhead {
+    padding: 18px 22px;
+    display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px dashed var(--ink-line);
+  }
+  .story-mbody {
+    display: grid; grid-template-columns: 1fr 1fr;
+    overflow: auto; flex: 1;
+  }
+  .story-mart { background: var(--cream-2); display: grid; place-items: center; padding: 30px; min-height: 280px; font-size: 110px; }
+  .story-mtext { padding: 28px; font-size: 16px; line-height: 1.7; }
+  .story-mfoot { padding: 14px 22px; border-top: 1px dashed var(--ink-line); display: flex; justify-content: space-between; align-items: center; }
+  .page-dots { display: flex; gap: 5px; }
+  .page-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cream-2); }
+  .page-dot.active { background: var(--peach-deep); width: 22px; border-radius: 4px; }
+  @media (max-width: 720px) { .story-mbody { grid-template-columns: 1fr; } }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(120px);
+    background: var(--ink); color: var(--cream);
+    padding: 14px 22px; border-radius: 999px;
+    font-weight: 600; font-size: 14px;
+    box-shadow: var(--shadow-pop);
+    transition: transform .4s cubic-bezier(.34,1.56,.64,1);
+    z-index: 999; pointer-events: none;
+    display: flex; gap: 10px; align-items: center;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Accessibility class toggles ── */
+  .a11y-large { font-size: 18px; }
+  .a11y-large h1 { font-size: 36px; }
+  .a11y-large h3 { font-size: 22px; }
+  .a11y-large .reader-hero h1 { font-size: 52px; }
+  .a11y-high-contrast { --ink: #1a1422; --ink-soft: #3a2f48; --cream: #fff; --cream-2: #f1ebe0; }
+
+  .live-preview {
+    border: 2px dashed var(--ink-line); border-radius: var(--radius-md);
+    padding: 16px; background: var(--cream-2); font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ╔═══════════════ LOGIN ═══════════════╗ -->
+<div class="login-shell" id="login">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="mark">✨</div>
+      <h1>Lumi CMS</h1>
+    </div>
+    <p class="login-sub">Magazine OS for curious editors and tiny readers.</p>
+
+    <div class="role-tabs">
+      <button class="role-tab active" data-role="publisher" onclick="pickRole('publisher')">
+        <span class="em">📝</span> Publisher
+      </button>
+      <button class="role-tab" data-role="reader" onclick="pickRole('reader')">
+        <span class="em">📖</span> Reader
+      </button>
+    </div>
+
+    <div class="form-row">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="you@lumi.app" value="editor@lumi.app"/>
+    </div>
+    <div class="form-row">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••" value="lumi123"/>
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Sign in →</button>
+    <div class="err" id="loginErr"></div>
+
+    <div class="hint" id="loginHint">
+      <strong>Demo accounts:</strong><br/>
+      Publisher → <code>editor@lumi.app</code> / <code>lumi123</code><br/>
+      Reader → any email / any password
+    </div>
+  </div>
+</div>
+
+<!-- ╔═══════════════ PUBLISHER PORTAL ═══════════════╗ -->
+<div class="app-shell" id="portal">
+  <aside class="sidebar">
+    <div class="side-logo">
+      <div class="mark">✨</div>
+      <span>Lumi CMS</span>
+    </div>
+    <div class="side-section">Content</div>
+    <button class="side-link active" data-page="dashboard" onclick="goPage('dashboard')"><span class="em">🏠</span> Dashboard</button>
+    <button class="side-link" data-page="issues" onclick="goPage('issues')"><span class="em">📰</span> Issues</button>
+    <button class="side-link" data-page="stories" onclick="goPage('stories')"><span class="em">📚</span> Stories</button>
+    <button class="side-link" data-page="media" onclick="goPage('media')"><span class="em">🖼️</span> Media library</button>
+    <div class="side-section">Theme</div>
+    <button class="side-link" data-page="header" onclick="goPage('header')"><span class="em">🔝</span> Header</button>
+    <button class="side-link" data-page="footer" onclick="goPage('footer')"><span class="em">🔚</span> Footer</button>
+    <div class="side-section">Publishing</div>
+    <button class="side-link" data-page="seo" onclick="goPage('seo')"><span class="em">🔍</span> SEO</button>
+    <button class="side-link" data-page="a11y" onclick="goPage('a11y')"><span class="em">♿</span> Accessibility</button>
+    <button class="side-link" data-page="preview" onclick="goPage('preview')"><span class="em">👁️</span> Preview</button>
+
+    <div class="side-foot">
+      <div class="side-avatar">🦊</div>
+      <div>
+        <div class="name" id="userName">Editor</div>
+        <div class="role" id="userRole">Publisher</div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="content-area" id="contentArea">
+    <!-- pages rendered here -->
+  </main>
+</div>
+
+<!-- ╔═══════════════ READER FRAME ═══════════════╗ -->
+<div class="reader-frame" id="reader" style="display:none;"></div>
+
+<!-- ╔═══════════════ DRAWER + MODAL ═══════════════╗ -->
+<div class="drawer-wrap" id="drawerWrap">
+  <div class="drawer-bg" onclick="closeDrawer()"></div>
+  <div class="drawer" id="drawer"></div>
+</div>
+
+<div class="story-modal-bg" id="storyModal"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"><span class="em">✨</span><span id="toastMsg">Saved!</span></div>
+
+<script>
+// ╔══════════════════════════════════════════════╗
+// ║ STORAGE                                      ║
+// ╚══════════════════════════════════════════════╝
+const STORAGE_KEY = 'lumi_cms_v1';
+
+function loadState() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return null;
+}
+function saveState() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(DB)); } catch(e) {}
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ SEED DATA                                    ║
+// ╚══════════════════════════════════════════════╝
+function seedDB() {
+  return {
+    site: {
+      name: 'Lumi Land',
+      tagline: 'A magazine for curious kids',
+      logoEmoji: '✨',
+      primaryColor: '#FFB088',
+      header: {
+        nav: [
+          { label: 'Home', href: '#home' },
+          { label: 'Library', href: '#library' },
+          { label: 'About', href: '#about' }
+        ]
+      },
+      footer: {
+        about: 'Lumi Land is an interactive magazine that helps little explorers read, listen, learn, and create.',
+        sections: [
+          { title: 'Read', links: [{ label: 'Latest issue', href: '#latest' }, { label: 'Library', href: '#library' }] },
+          { title: 'Family', links: [{ label: 'For parents', href: '#parents' }, { label: 'For schools', href: '#schools' }] }
+        ],
+        copy: '© 2026 Lumi Land · Made with care for kids 6–10'
+      },
+      seo: {
+        keywords: ['kids magazine','stories for kids','bedtime stories','reading','quizzes for kids'],
+        ogImage: ''
+      },
+      a11y: {
+        largeText: false,
+        highContrast: false,
+        dyslexicSpacing: false,
+        captionsDefault: true
+      }
+    },
+    issues: [
+      {
+        id: 'iss-001',
+        title: 'May 2026 · The Garden Issue',
+        cover: '🌸',
+        status: 'published',
+        publishedAt: '2026-05-01T09:00:00Z',
+        stories: ['st-fox','st-bunny','st-firefly'],
+        description: 'Sunshine, gardens, kindness, and one very busy bunny.'
+      },
+      {
+        id: 'iss-002',
+        title: 'June 2026 · The Sky Issue',
+        cover: '☁️',
+        status: 'draft',
+        publishedAt: null,
+        stories: ['st-cloud','st-star'],
+        description: 'Look up! Clouds, stars, and the very first rainbow.'
+      }
+    ],
+    stories: [
+      { id:'st-fox', title:'Finn the Forest Helper', tag:'Kindness', cover:'🦊', color:'mint', status:'published',
+        summary:'A small fox discovers that helping others is its own kind of magic.',
+        pages:[
+          "Finn was a small red fox who lived in Whispering Pines. He always wanted to do something big and important.",
+          "One morning he helped a tiny bird build her nest. Then a turtle cross the path. Then a squirrel find her acorns.",
+          "By sunset, Finn felt happy in a way he never had before. The forest felt warmer because of him.",
+          "He realized: doing many small kind things IS the big important thing. 🦊✨"
+        ]
+      },
+      { id:'st-bunny', title:'Mochi and the Carrot Garden', tag:'Friendship', cover:'🐰', color:'peach', status:'published',
+        summary:'A bunny learns that sharing makes everything taste better.',
+        pages:[
+          "Mochi the bunny grew the biggest carrots in Sugar Hill. He kept them all to himself.",
+          "One day his friends came by, hungry. Mochi felt unsure — should he share?",
+          "He gave each friend one carrot. Suddenly the garden felt full of laughter.",
+          "Mochi noticed: a carrot tastes good, but sharing one tastes even better. 🥕💛"
+        ]
+      },
+      { id:'st-firefly', title:'Pip and the Tiny Lantern', tag:'Bedtime', cover:'🌟', color:'lavender', status:'published',
+        summary:'A little firefly learns that even the smallest light can help.',
+        pages:[
+          "Deep in the meadow lived a tiny firefly named Pip. Her glow was the smallest in the whole field.",
+          "One foggy night, a baby owl got lost on the way home.",
+          "Pip flew up and lit her tiny lantern — just bright enough to show the path home.",
+          "From then on, Pip knew her little light mattered. 🌙"
+        ]
+      },
+      { id:'st-cloud', title:'Cumulus and the Rainbow Recipe', tag:'Imagination', cover:'☁️', color:'sky', status:'draft',
+        summary:'A young cloud invents the very first rainbow.',
+        pages:[
+          "Cumulus was a fluffy young cloud who loved mixing things — water, sunbeams, even a pinch of mist.",
+          "He spilled raindrops while the sun was still out. Colors arched across the sky!",
+          "Cumulus had accidentally invented the very first rainbow.",
+          "Every time it rains and the sun smiles, the sky remembers Cumulus. 🌈"
+        ]
+      },
+      { id:'st-star', title:'A Star Named Honey', tag:'Bedtime', cover:'⭐', color:'sun', status:'draft',
+        summary:'A shy little star learns to shine in her own way.',
+        pages:[
+          "High in the velvet sky lived a star named Honey. Her shine felt too soft to notice.",
+          "All the other stars sparkled loudly. Honey hid behind a cloud.",
+          "Then a child on Earth whispered: 'Look — that one is the warmest!'",
+          "Honey realized her gentle glow was exactly what someone needed. ⭐"
+        ]
+      }
+    ]
+  };
+}
+
+let DB = loadState() || seedDB();
+let SESSION = { role: null, name: null, email: null };
+
+// ╔══════════════════════════════════════════════╗
+// ║ LOGIN                                        ║
+// ╚══════════════════════════════════════════════╝
+let pickedRole = 'publisher';
+function pickRole(role) {
+  pickedRole = role;
+  document.querySelectorAll('.role-tab').forEach(b => b.classList.toggle('active', b.dataset.role === role));
+  if (role === 'reader') {
+    document.getElementById('loginEmail').value = 'reader@lumi.app';
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginHint').innerHTML = '<strong>Reader:</strong> sign in with any email — you\'ll only see <em>published</em> issues.';
+  } else {
+    document.getElementById('loginEmail').value = 'editor@lumi.app';
+    document.getElementById('loginPass').value = 'lumi123';
+    document.getElementById('loginHint').innerHTML = '<strong>Publisher demo:</strong> <code>editor@lumi.app</code> / <code>lumi123</code>';
+  }
+}
+
+function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr');
+  err.textContent = '';
+  if (!email) { err.textContent = 'Please enter an email.'; return; }
+
+  if (pickedRole === 'publisher') {
+    if (email !== 'editor@lumi.app' || pass !== 'lumi123') {
+      err.textContent = 'Wrong credentials. Try editor@lumi.app / lumi123';
+      return;
+    }
+    SESSION = { role: 'publisher', name: 'Editor Mira', email };
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('portal').classList.add('active');
+    document.getElementById('userName').textContent = SESSION.name;
+    document.getElementById('userRole').textContent = 'Publisher';
+    goPage('dashboard');
+  } else {
+    SESSION = { role: 'reader', name: email.split('@')[0], email };
+    document.getElementById('login').style.display = 'none';
+    renderReaderPortal();
+  }
+}
+
+function logout() {
+  SESSION = { role: null };
+  document.getElementById('portal').classList.remove('active');
+  document.getElementById('reader').style.display = 'none';
+  document.getElementById('login').style.display = 'grid';
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ NAV                                          ║
+// ╚══════════════════════════════════════════════╝
+function goPage(page) {
+  document.querySelectorAll('.side-link').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+  const area = document.getElementById('contentArea');
+  area.innerHTML = '';
+  switch (page) {
+    case 'dashboard': renderDashboard(area); break;
+    case 'issues':    renderIssues(area); break;
+    case 'stories':   renderStories(area); break;
+    case 'media':     renderMedia(area); break;
+    case 'header':    renderHeaderEditor(area); break;
+    case 'footer':    renderFooterEditor(area); break;
+    case 'seo':       renderSEO(area); break;
+    case 'a11y':      renderA11y(area); break;
+    case 'preview':   renderPreviewPage(area); break;
+  }
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ DASHBOARD                                    ║
+// ╚══════════════════════════════════════════════╝
+function renderDashboard(area) {
+  const published = DB.issues.filter(i => i.status === 'published').length;
+  const drafts = DB.issues.filter(i => i.status === 'draft').length;
+  const stories = DB.stories.length;
+  const pubStories = DB.stories.filter(s => s.status === 'published').length;
+  area.innerHTML = `
+    <div class="page-head">
+      <div>
+        <h1>Welcome back, ${escapeHtml(SESSION.name)} 🌿</h1>
+        <p class="sub">Here's what's happening in your magazine today.</p>
+      </div>
+      <button class="btn btn-primary" onclick="goPage('issues')">+ New issue</button>
+    </div>
+    <div class="grid-4">
+      <div class="stat"><div class="label">Published issues</div><div class="value">${published}</div><div class="delta">Live for readers</div></div>
+      <div class="stat"><div class="label">Draft issues</div><div class="value">${drafts}</div><div class="delta" style="color:var(--amber)">Not yet visible</div></div>
+      <div class="stat"><div class="label">Stories total</div><div class="value">${stories}</div><div class="delta">${pubStories} published</div></div>
+      <div class="stat"><div class="label">SEO score</div><div class="value">${computeSEOScore().pct}%</div><div class="delta">${computeSEOScore().label}</div></div>
+    </div>
+
+    <div class="grid-2" style="margin-top:18px;">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Recent issues</h3>
+          <a onclick="goPage('issues')">View all →</a>
+        </div>
+        ${DB.issues.slice(0,4).map(i => issueRow(i)).join('')}
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Publishing checklist</h3>
+          <span class="help">Required before a magazine goes live</span>
+        </div>
+        ${publishChecklistRows()}
+      </div>
+    </div>
+  `;
+}
+
+function publishChecklistRows() {
+  const items = [
+    { ok: DB.site.name, label: 'Site name & tagline set' },
+    { ok: DB.site.header.nav.length > 0, label: 'Header navigation has at least one link' },
+    { ok: DB.site.footer.sections.length > 0, label: 'Footer sections configured' },
+    { ok: DB.site.seo.keywords.length >= 3, label: 'SEO has 3+ keywords' },
+    { ok: DB.stories.some(s => s.status === 'published'), label: 'At least one story is published' }
+  ];
+  return items.map(it => `
+    <div class="lint ${it.ok ? 'pass':'warn'}">
+      <span class="ico">${it.ok ? '✅' : '⚠️'}</span>
+      <div>${it.label}</div>
+    </div>
+  `).join('');
+}
+
+function issueRow(i) {
+  const sCount = i.stories.length;
+  return `
+    <div class="row">
+      <div class="thumb">${i.cover}</div>
+      <div class="meta">
+        <h4>${escapeHtml(i.title)}</h4>
+        <p>${sCount} stories · ${escapeHtml(i.description || '')}</p>
+      </div>
+      <span class="badge-tag b-${i.status}">${i.status}</span>
+      <div class="actions">
+        <button class="btn btn-ghost btn-sm" onclick="openIssueDrawer('${i.id}')">Edit</button>
+        ${i.status === 'draft'
+          ? `<button class="btn btn-mint btn-sm" onclick="publishIssue('${i.id}')">Publish</button>`
+          : `<button class="btn btn-danger btn-sm" onclick="unpublishIssue('${i.id}')">Unpublish</button>`}
+      </div>
+    </div>
+  `;
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ ISSUES                                       ║
+// ╚══════════════════════════════════════════════╝
+function renderIssues(area) {
+  area.innerHTML = `
+    <div class="page-head">
+      <div><h1>Issues</h1><p class="sub">Bundle stories into a magazine issue and publish it.</p></div>
+      <button class="btn btn-primary" onclick="openIssueDrawer()">+ New issue</button>
+    </div>
+    <div class="panel">
+      ${DB.issues.map(i => issueRow(i)).join('') || `<div class="empty-state"><span class="big">📰</span>No issues yet.</div>`}
+    </div>
+  `;
+}
+
+function openIssueDrawer(id) {
+  const isNew = !id;
+  const issue = isNew
+    ? { id: 'iss-' + Date.now(), title:'', cover:'📔', description:'', status:'draft', publishedAt:null, stories:[] }
+    : structuredClone(DB.issues.find(i => i.id === id));
+
+  const storyChecks = DB.stories.map(s => `
+    <label class="check">
+      <input type="checkbox" value="${s.id}" ${issue.stories.includes(s.id) ? 'checked':''}/>
+      ${s.cover} ${escapeHtml(s.title)}
+    </label>
+  `).join('');
+
+  const d = document.getElementById('drawer');
+  d.innerHTML = `
+    <div class="drawer-head">
+      <h2>${isNew ? 'New issue' : 'Edit issue'}</h2>
+      <button class="close-btn" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="field"><label>Title</label><input id="ed_title" value="${escapeAttr(issue.title)}" placeholder="June 2026 · The Sky Issue"/></div>
+    <div class="grid-2">
+      <div class="field"><label>Cover emoji</label><input id="ed_cover" value="${escapeAttr(issue.cover)}" maxlength="4"/></div>
+      <div class="field"><label>Status</label>
+        <select id="ed_status">
+          <option value="draft" ${issue.status==='draft'?'selected':''}>Draft</option>
+          <option value="published" ${issue.status==='published'?'selected':''}>Published</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Description</label><textarea id="ed_desc">${escapeHtml(issue.description||'')}</textarea></div>
+    <div class="field"><label>Stories in this issue</label><div class="checks">${storyChecks || '<span style="color:var(--ink-soft);font-size:13px">No stories yet. Add some from Stories.</span>'}</div></div>
+
+    <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="saveIssue('${issue.id}', ${isNew})">Save</button>
+      ${!isNew ? `<button class="btn btn-danger" onclick="deleteIssue('${issue.id}')">Delete</button>` : ''}
+      <button class="btn btn-ghost" onclick="closeDrawer()">Cancel</button>
+    </div>
+  `;
+  openDrawer();
+}
+
+function saveIssue(id, isNew) {
+  const title = document.getElementById('ed_title').value.trim();
+  if (!title) { toast('Please add a title.','⚠️'); return; }
+  const data = {
+    id,
+    title,
+    cover: document.getElementById('ed_cover').value.trim() || '📔',
+    description: document.getElementById('ed_desc').value.trim(),
+    status: document.getElementById('ed_status').value,
+    stories: Array.from(document.querySelectorAll('#drawer input[type=checkbox]:checked')).map(c => c.value),
+  };
+  if (data.status === 'published') data.publishedAt = new Date().toISOString();
+  if (isNew) DB.issues.unshift(data);
+  else DB.issues = DB.issues.map(i => i.id === id ? { ...i, ...data } : i);
+  saveState();
+  closeDrawer();
+  goPage('issues');
+  toast(isNew ? 'Issue created!' : 'Issue saved!', '✅');
+}
+
+function deleteIssue(id) {
+  if (!confirm('Delete this issue? This cannot be undone.')) return;
+  DB.issues = DB.issues.filter(i => i.id !== id);
+  saveState();
+  closeDrawer();
+  goPage('issues');
+  toast('Issue deleted', '🗑️');
+}
+
+function publishIssue(id) {
+  const i = DB.issues.find(x => x.id === id);
+  if (!i) return;
+  // run pre-flight
+  const seoScore = computeSEOScore();
+  const a11yScore = computeA11yScore();
+  i.status = 'published';
+  i.publishedAt = new Date().toISOString();
+  // bake SEO snapshot for this publish
+  i.seoSnapshot = buildSEOFor(i);
+  // bake a11y snapshot
+  i.a11ySnapshot = { score: a11yScore.pct, level: a11yScore.label, options: { ...DB.site.a11y } };
+  saveState();
+  goPage('issues');
+  toast(`Published! SEO ${seoScore.pct}% · A11y ${a11yScore.pct}%`, '🚀');
+}
+
+function unpublishIssue(id) {
+  const i = DB.issues.find(x => x.id === id);
+  if (!i) return;
+  if (!confirm('Unpublish this issue? Readers will no longer see it.')) return;
+  i.status = 'draft';
+  saveState();
+  goPage('issues');
+  toast('Issue unpublished', '↩️');
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ STORIES                                      ║
+// ╚══════════════════════════════════════════════╝
+function renderStories(area) {
+  area.innerHTML = `
+    <div class="page-head">
+      <div><h1>Stories</h1><p class="sub">The reusable building blocks of every issue.</p></div>
+      <button class="btn btn-primary" onclick="openStoryDrawer()">+ New story</button>
+    </div>
+    <div class="panel">
+      ${DB.stories.map(s => storyRow(s)).join('') || `<div class="empty-state"><span class="big">📚</span>No stories yet.</div>`}
+    </div>
+  `;
+}
+
+function storyRow(s) {
+  return `
+    <div class="row">
+      <div class="thumb">${s.cover}</div>
+      <div class="meta">
+        <h4>${escapeHtml(s.title)}</h4>
+        <p>${escapeHtml(s.tag)} · ${s.pages.length} pages · ${escapeHtml(s.summary)}</p>
+      </div>
+      <span class="badge-tag b-${s.status}">${s.status}</span>
+      <div class="actions">
+        <button class="btn btn-ghost btn-sm" onclick="openStoryDrawer('${s.id}')">Edit</button>
+      </div>
+    </div>
+  `;
+}
+
+function openStoryDrawer(id) {
+  const isNew = !id;
+  const s = isNew
+    ? { id:'st-'+Date.now(), title:'', tag:'Bedtime', cover:'⭐', color:'lavender', status:'draft', summary:'', pages:[''] }
+    : structuredClone(DB.stories.find(x => x.id === id));
+
+  const d = document.getElementById('drawer');
+  d.innerHTML = `
+    <div class="drawer-head">
+      <h2>${isNew ? 'New story' : 'Edit story'}</h2>
+      <button class="close-btn" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="field"><label>Title</label><input id="sd_title" value="${escapeAttr(s.title)}"/></div>
+    <div class="grid-2">
+      <div class="field"><label>Cover emoji</label><input id="sd_cover" value="${escapeAttr(s.cover)}" maxlength="4"/></div>
+      <div class="field"><label>Tag</label>
+        <select id="sd_tag">
+          ${['Bedtime','Adventure','Kindness','Friendship','Imagination','Learning'].map(t => `<option ${s.tag===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>Color theme</label>
+        <select id="sd_color">
+          ${['peach','mint','sky','lavender','sun','pink'].map(c => `<option ${s.color===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="sd_status">
+          <option value="draft" ${s.status==='draft'?'selected':''}>Draft</option>
+          <option value="published" ${s.status==='published'?'selected':''}>Published</option>
+        </select>
+      </div>
+    </div>
+    <div class="field"><label>Summary</label><textarea id="sd_sum">${escapeHtml(s.summary)}</textarea></div>
+    <div class="field"><label>Pages (one per line)</label><textarea class="tall" id="sd_pages">${escapeHtml(s.pages.join('\n\n'))}</textarea></div>
+
+    <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="saveStory('${s.id}', ${isNew})">Save</button>
+      ${!isNew ? `<button class="btn btn-danger" onclick="deleteStory('${s.id}')">Delete</button>` : ''}
+      <button class="btn btn-ghost" onclick="closeDrawer()">Cancel</button>
+    </div>
+  `;
+  openDrawer();
+}
+
+function saveStory(id, isNew) {
+  const data = {
+    id,
+    title: document.getElementById('sd_title').value.trim() || 'Untitled story',
+    cover: document.getElementById('sd_cover').value.trim() || '⭐',
+    tag: document.getElementById('sd_tag').value,
+    color: document.getElementById('sd_color').value,
+    status: document.getElementById('sd_status').value,
+    summary: document.getElementById('sd_sum').value.trim(),
+    pages: document.getElementById('sd_pages').value.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+  };
+  if (data.pages.length === 0) data.pages = ['(empty page)'];
+  if (isNew) DB.stories.unshift(data);
+  else DB.stories = DB.stories.map(s => s.id === id ? { ...s, ...data } : s);
+  saveState();
+  closeDrawer();
+  goPage('stories');
+  toast(isNew ? 'Story created!' : 'Story saved!', '📝');
+}
+
+function deleteStory(id) {
+  if (!confirm('Delete this story?')) return;
+  DB.stories = DB.stories.filter(s => s.id !== id);
+  DB.issues.forEach(i => i.stories = i.stories.filter(x => x !== id));
+  saveState();
+  closeDrawer();
+  goPage('stories');
+  toast('Story deleted','🗑️');
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ MEDIA                                        ║
+// ╚══════════════════════════════════════════════╝
+function renderMedia(area) {
+  const palette = ['🌸','🌿','🐰','🦊','🌙','⭐','🌈','☁️','🐠','🚀','🌳','🦋','🏰','🌻','🦉','🐢','🐉','🐳','🌼','🍄'];
+  area.innerHTML = `
+    <div class="page-head">
+      <div><h1>Media library</h1><p class="sub">Pick from kid-friendly icons. (Upload coming soon.)</p></div>
+    </div>
+    <div class="panel">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:10px;">
+        ${palette.map(e => `<div style="background:var(--cream-2);aspect-ratio:1;display:grid;place-items:center;border-radius:14px;font-size:36px;cursor:pointer;" onclick="navigator.clipboard?.writeText('${e}');toast('Copied ${e}','📋')">${e}</div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ HEADER EDITOR                                ║
+// ╚══════════════════════════════════════════════╝
+function renderHeaderEditor(area) {
+  const h = DB.site.header;
+  area.innerHTML = `
+    <div class="page-head">
+      <div><h1>Header</h1><p class="sub">The bar that sits at the top of every reader page.</p></div>
+      <button class="btn btn-primary" onclick="saveHeader()">Save header</button>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>Site brand</h3></div>
+          <div class="grid-2">
+            <div class="field"><label>Site name</label><input id="hd_name" value="${escapeAttr(DB.site.name)}"/></div>
+            <div class="field"><label>Logo emoji</label><input id="hd_logo" value="${escapeAttr(DB.site.logoEmoji)}" maxlength="4"/></div>
+          </div>
+          <div class="field"><label>Tagline</label><input id="hd_tag" value="${escapeAttr(DB.site.tagline)}"/></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Navigation links</h3>
+            <button class="btn btn-ghost btn-sm" onclick="addNavLink()">+ Add</button>
+          </div>
+          <div id="navList">
+            ${h.nav.map((n,i) => navRow(n,i)).join('')}
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>Live preview</h3></div>
+          <div class="live-preview" id="hdPreview">${headerPreviewHTML()}</div>
+        </div>
+      </div>
+    </div>
+  `;
+  // live-update preview
+  area.addEventListener('input', () => { document.getElementById('hdPreview').innerHTML = headerPreviewHTML(true); });
+}
+
+function navRow(n, i) {
+  return `
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px;" data-nav-row="${i}">
+      <input data-k="label" value="${escapeAttr(n.label)}" placeholder="Label"/>
+      <input data-k="href" value="${escapeAttr(n.href)}" placeholder="#anchor or URL"/>
+      <button class="btn btn-danger btn-sm" onclick="removeNavLink(${i})">✕</button>
+    </div>
+  `;
+}
+
+function addNavLink() {
+  saveHeader(true); // capture current values
+  DB.site.header.nav.push({ label:'New link', href:'#' });
+  renderHeaderEditor(document.getElementById('contentArea'));
+}
+function removeNavLink(i) {
+  saveHeader(true);
+  DB.site.header.nav.splice(i,1);
+  renderHeaderEditor(document.getElementById('contentArea'));
+}
+
+function saveHeader(silent) {
+  DB.site.name = document.getElementById('hd_name').value.trim() || 'Lumi Land';
+  DB.site.logoEmoji = document.getElementById('hd_logo').value.trim() || '✨';
+  DB.site.tagline = document.getElementById('hd_tag').value.trim();
+  const rows = document.querySelectorAll('[data-nav-row]');
+  DB.site.header.nav = Array.from(rows).map(r => ({
+    label: r.querySelector('[data-k=label]').value.trim() || 'Link',
+    href: r.querySelector('[data-k=href]').value.trim() || '#'
+  }));
+  saveState();
+  if (!silent) toast('Header saved','✅');
+}
+
+function headerPreviewHTML(fromForm) {
+  let name = DB.site.name, logo = DB.site.logoEmoji, nav = DB.site.header.nav;
+  if (fromForm) {
+    name = document.getElementById('hd_name')?.value || name;
+    logo = document.getElementById('hd_logo')?.value || logo;
+    const rows = document.querySelectorAll('[data-nav-row]');
+    nav = Array.from(rows).map(r => ({ label: r.querySelector('[data-k=label]').value, href:'#' }));
+  }
+  return `
+    <div style="background:white;padding:12px 16px;border-radius:14px;display:flex;gap:12px;align-items:center;box-shadow:var(--shadow-soft);">
+      <div style="width:30px;height:30px;border-radius:50%;background:conic-gradient(from 0deg,var(--peach),var(--sun),var(--mint),var(--sky),var(--lavender),var(--peach));display:grid;place-items:center;font-size:13px;">${escapeHtml(logo)}</div>
+      <strong style="font-family:'Fredoka',sans-serif;">${escapeHtml(name)}</strong>
+      <div style="flex:1;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+        ${nav.map(n => `<span style="padding:5px 12px;border-radius:999px;background:var(--cream-2);font-size:12px;font-weight:600;">${escapeHtml(n.label)}</span>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ FOOTER EDITOR                                ║
+// ╚══════════════════════════════════════════════╝
+function renderFooterEditor(area) {
+  const f = DB.site.footer;
+  area.innerHTML = `
+    <div class="page-head">
+      <div><h1>Footer</h1><p class="sub">The friendly bit at the bottom of every reader page.</p></div>
+      <button class="btn btn-primary" onclick="saveFooter()">Save footer</button>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>About text</h3></div>
+          <div class="field"><textarea id="ft_about" class="tall">${escapeHtml(f.about)}</textarea></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Link sections</h3>
+            <button class="btn btn-ghost btn-sm" onclick="addFooterSection()">+ Add section</button>
+          </div>
+          <div id="ftSections">
+            ${f.sections.map((sec,i) => footerSectionEditor(sec,i)).join('')}
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Copyright</h3></div>
+          <div class="field"><input id="ft_copy" value="${escapeAttr(f.copy)}"/></div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>Live preview</h3></div>
+          <div class="live-preview" id="ftPreview">${footerPreviewHTML()}</div>
+        </div>
+      </div>
+    </div>
+  `;
+  area.addEventListener('input', () => { document.getElementById('ftPreview').innerHTML = footerPreviewHTML(true); });
+}
+
+function footerSectionEditor(sec, i) {
+  return `
+    <div style="background:var(--cream-2);padding:14px;border-radius:12px;margin-bottom:10px;" data-fs-row="${i}">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <input data-fk="title" value="${escapeAttr(sec.title)}" placeholder="Section title" style="flex:1;"/>
+        <button class="btn btn-danger btn-sm" onclick="removeFooterSection(${i})">✕</button>
+      </div>
+      <div data-fs-links>
+        ${sec.links.map((l, li) => `
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:6px;" data-fl="${li}">
+            <input data-flk="label" value="${escapeAttr(l.label)}" placeholder="Link label"/>
+            <input data-flk="href" value="${escapeAttr(l.href)}" placeholder="#href"/>
+            <button class="btn btn-danger btn-sm" onclick="removeFooterLink(${i},${li})">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="addFooterLink(${i})" style="margin-top:4px;">+ Add link</button>
+    </div>
+  `;
+}
+
+function commitFooterFromForm() {
+  DB.site.footer.about = document.getElementById('ft_about').value.trim();
+  DB.site.footer.copy = document.getElementById('ft_copy').value.trim();
+  const sections = [];
+  document.querySelectorAll('[data-fs-row]').forEach(srow => {
+    const title = srow.querySelector('[data-fk=title]').value.trim() || 'Untitled';
+    const links = [];
+    srow.querySelectorAll('[data-fl]').forEach(lrow => {
+      links.push({
+        label: lrow.querySelector('[data-flk=label]').value.trim() || 'Link',
+        href: lrow.querySelector('[data-flk=href]').value.trim() || '#'
+      });
+    });
+    sections.push({ title, links });
+  });
+  DB.site.footer.sections = sections;
+}
+function addFooterSection() {
+  commitFooterFromForm();
+  DB.site.footer.sections.push({ title:'New section', links:[{label:'New link', href:'#'}] });
+  renderFooterEditor(document.getElementById('contentArea'));
+}
+function removeFooterSection(i) {
+  commitFooterFromForm();
+  DB.site.footer.sections.splice(i,1);
+  renderFooterEditor(document.getElementById('contentArea'));
+}
+function addFooterLink(i) {
+  commitFooterFromForm();
+  DB.site.footer.sections[i].links.push({label:'New link', href:'#'});
+  renderFooterEditor(document.getElementById('contentArea'));
+}
+function removeFooterLink(i, li) {
+  commitFooterFromForm();
+  DB.site.footer.sections[i].links.splice(li,1);
+  renderFooterEditor(document.getElementById('contentArea'));
+}
+function saveFooter() {
+  commitFooterFromForm();
+  saveState();
+  toast('Footer saved','✅');
+}
+
+function footerPreviewHTML(fromForm) {
+  let f = DB.site.footer;
+  if (fromForm) {
+    commitFooterFromForm();
+    f = DB.site.footer;
+  }
+  return `
+    <div style="background:white;padding:18px;border-radius:14px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:18px;font-size:12px;">
+      <div>
+        <strong style="font-family:'Fredoka',sans-serif;font-size:15px;">${escapeHtml(DB.site.name)}</strong>
+        <p style="color:var(--ink-soft);margin-top:6px;">${escapeHtml(f.about)}</p>
+      </div>
+      ${f.sections.slice(0,2).map(s => `
+        <div>
+          <strong>${escapeHtml(s.title)}</strong>
+          ${s.links.map(l => `<div style="color:var(--ink-soft);margin-top:4px;">${escapeHtml(l.label)}</div>`).join('')}
+        </div>
+      `).join('')}
+      <div style="grid-column:1/-1;border-top:1px dashed var(--ink-line);padding-top:8px;color:var(--ink-soft);">${escapeHtml(f.copy)}</div>
+    </div>
+  `;
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ SEO                                          ║
+// ╚══════════════════════════════════════════════╝
+function buildSEOFor(issue) {
+  const title = `${issue?.title || DB.site.name} · ${DB.site.tagline}`;
+  const description = issue?.description || DB.site.tagline;
+  const keywords = [...DB.site.seo.keywords];
+  // pull keywords from issue stories
+  if (issue) {
+    issue.stories.forEach(sid => {
+      const st = DB.stories.find(s => s.id === sid);
+      if (st) keywords.push(st.tag.toLowerCase(), ...st.title.toLowerCase().split(' ').filter(w => w.length > 4));
+    });
+  }
+  const uniqueKw = [...new Set(keywords)].slice(0,12);
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "PublicationIssue",
+    "issueNumber": issue?.id || 'site',
+    "name": title,
+    "description": description,
+    "isAccessibleForFree": true,
+    "audience": { "@type": "PeopleAudience", "suggestedMinAge": 5, "suggestedMaxAge": 12 },
+    "datePublished": issue?.publishedAt || new Date().toISOString(),
+    "publisher": { "@type": "Organization", "name": DB.site.name }
+  };
+  return { title, description, keywords: uniqueKw, jsonLd };
+}
+
+function computeSEOScore() {
+  let score = 0, max = 6;
+  if (DB.site.name) score++;
+  if (DB.site.tagline && DB.site.tagline.length >= 20) score++;
+  if (DB.site.seo.keywords.length >= 3) score++;
+  if (DB.site.seo.keywords.length >= 5) score++;
+  if (DB.issues.some(i => i.description && i.description.length >= 20)) score++;
+  if (DB.stories.some(s => s.summary && s.summary.length >= 30)) score++;
+  const pct = Math.round((score/max)*100);
+  const label = pct >= 80 ? 'Excellent' : pct >= 60 ? 'Good' : pct >= 40 ? 'Needs work' : 'Poor';
+  return { pct, label, score, max };
+}
+
+function renderSEO(area) {
+  const seo = DB.site.seo;
+  const s = computeSEOScore();
+  const sitePreview = buildSEOFor(null);
+  area.innerHTML = `
+    <div class="page-head">
+      <div><h1>SEO</h1><p class="sub">Generated automatically every time you publish.</p></div>
+      <button class="btn btn-primary" onclick="saveSEO()">Save SEO</button>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>Site SEO defaults</h3><span class="help">Applied to every issue</span></div>
+          <div class="field"><label>Keywords (comma separated)</label>
+            <textarea id="seo_kw">${escapeHtml(seo.keywords.join(', '))}</textarea>
+          </div>
+          <div class="field"><label>Open Graph image URL (optional)</label>
+            <input id="seo_og" value="${escapeAttr(seo.ogImage)}" placeholder="https://...jpg"/>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>SEO health</h3><span class="help">${s.label}</span></div>
+          <div class="progress"><div style="width:${s.pct}%;"></div></div>
+          <p style="margin-top:8px;color:var(--ink-soft);font-size:13px;">${s.score}/${s.max} checks passing · ${s.pct}%</p>
+          <div style="margin-top:12px;">
+            ${seoLintRows()}
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>Generated meta preview</h3></div>
+          <pre class="code">&lt;title&gt;${escapeHtml(sitePreview.title)}&lt;/title&gt;
+&lt;meta name="description" content="${escapeHtml(sitePreview.description)}"&gt;
+&lt;meta name="keywords" content="${escapeHtml(sitePreview.keywords.join(', '))}"&gt;
+&lt;meta property="og:title" content="${escapeHtml(sitePreview.title)}"&gt;
+&lt;meta property="og:description" content="${escapeHtml(sitePreview.description)}"&gt;
+&lt;meta property="og:type" content="website"&gt;
+&lt;meta name="twitter:card" content="summary_large_image"&gt;</pre>
+          <h4 style="margin-top:14px;">JSON-LD structured data</h4>
+          <pre class="code">${escapeHtml(JSON.stringify(sitePreview.jsonLd, null, 2))}</pre>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function seoLintRows() {
+  const items = [
+    { ok: DB.site.name.length > 0, label:'Site name is set' },
+    { ok: DB.site.tagline.length >= 20, label:`Tagline is descriptive (${DB.site.tagline.length}/20+ chars)` },
+    { ok: DB.site.seo.keywords.length >= 5, label:`At least 5 keywords (${DB.site.seo.keywords.length})` },
+    { ok: DB.issues.every(i => !i.description || i.description.length >= 20), label:'Every issue has a 20+ char description' },
+    { ok: DB.stories.every(s => s.summary.length >= 30), label:'Every story has a 30+ char summary' }
+  ];
+  return items.map(it => `<div class="lint ${it.ok?'pass':'warn'}"><span class="ico">${it.ok?'✅':'⚠️'}</span><div>${it.label}</div></div>`).join('');
+}
+
+function saveSEO() {
+  DB.site.seo.keywords = document.getElementById('seo_kw').value.split(',').map(s => s.trim()).filter(Boolean);
+  DB.site.seo.ogImage = document.getElementById('seo_og').value.trim();
+  saveState();
+  renderSEO(document.getElementById('contentArea'));
+  toast('SEO updated','🔍');
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ ACCESSIBILITY                                ║
+// ╚══════════════════════════════════════════════╝
+function computeA11yScore() {
+  let score = 0, max = 5;
+  if (DB.site.a11y.captionsDefault) score++;
+  if (DB.stories.every(s => s.summary.length >= 20)) score++; // alt-like text present
+  if (DB.site.header.nav.length >= 2) score++; // navigable
+  if (DB.site.footer.copy.length > 0) score++; // footer landmark
+  // reading level heuristic: avg page length under 220 chars/page
+  const avgLen = DB.stories.flatMap(s => s.pages).reduce((a,p)=>a+p.length,0) / Math.max(1, DB.stories.flatMap(s=>s.pages).length);
+  if (avgLen < 220) score++;
+  const pct = Math.round((score/max)*100);
+  const label = pct >= 80 ? 'AA-ready' : pct >= 60 ? 'Mostly accessible' : pct >= 40 ? 'Needs review' : 'Not ready';
+  return { pct, label, score, max, avgLen: Math.round(avgLen) };
+}
+
+function renderA11y(area) {
+  const a = DB.site.a11y;
+  const s = computeA11yScore();
+  area.innerHTML = `
+    <div class="page-head">
+      <div><h1>Accessibility</h1><p class="sub">Built-in checks to keep Lumi Land readable by everyone.</p></div>
+      <button class="btn btn-primary" onclick="saveA11y()">Save settings</button>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>Reader defaults</h3><span class="help">Options offered to every reader</span></div>
+          <div class="checks">
+            <label class="check"><input type="checkbox" id="a_large" ${a.largeText?'checked':''}/> Large text on by default</label>
+            <label class="check"><input type="checkbox" id="a_contrast" ${a.highContrast?'checked':''}/> High contrast mode</label>
+            <label class="check"><input type="checkbox" id="a_dyslexic" ${a.dyslexicSpacing?'checked':''}/> Dyslexic-friendly spacing</label>
+            <label class="check"><input type="checkbox" id="a_captions" ${a.captionsDefault?'checked':''}/> Captions/transcripts default on</label>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Accessibility audit</h3><span class="help">${s.label}</span></div>
+          <div class="progress"><div style="width:${s.pct}%;"></div></div>
+          <p style="margin-top:8px;color:var(--ink-soft);font-size:13px;">${s.score}/${s.max} checks passing · ${s.pct}%</p>
+          ${a11yLintRows(s)}
+        </div>
+      </div>
+      <div>
+        <div class="panel">
+          <div class="panel-head"><h3>What readers can toggle</h3></div>
+          <p style="color:var(--ink-soft);font-size:13px;margin-bottom:12px;">When you publish, readers will see these controls in the reader portal — pre-set to whatever you turn on here.</p>
+          <ul style="list-style:none;font-size:14px;line-height:1.9;">
+            <li>🔍 <strong>Large text</strong> — bumps body to 18px</li>
+            <li>🌑 <strong>High contrast</strong> — darker ink on lighter cream</li>
+            <li>📏 <strong>Dyslexic spacing</strong> — extra letter & line spacing</li>
+            <li>🔊 <strong>Read aloud</strong> — TTS available on every story</li>
+            <li>⌨️ <strong>Keyboard navigation</strong> — focus rings on every control</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function a11yLintRows(s) {
+  const avgLen = s.avgLen;
+  const items = [
+    { ok: DB.site.a11y.captionsDefault, label:'Captions/transcripts default on' },
+    { ok: DB.stories.every(st => st.summary.length >= 20), label:'Every story has alt-text-like summary' },
+    { ok: DB.site.header.nav.length >= 2, label:'Header has at least 2 nav links (landmark)' },
+    { ok: DB.site.footer.copy.length > 0, label:'Footer has copyright landmark' },
+    { ok: avgLen < 220, label:`Reading level OK (avg ${avgLen} chars/page)` }
+  ];
+  return items.map(it => `<div class="lint ${it.ok?'pass':'warn'}"><span class="ico">${it.ok?'✅':'⚠️'}</span><div>${it.label}</div></div>`).join('');
+}
+
+function saveA11y() {
+  DB.site.a11y = {
+    largeText: document.getElementById('a_large').checked,
+    highContrast: document.getElementById('a_contrast').checked,
+    dyslexicSpacing: document.getElementById('a_dyslexic').checked,
+    captionsDefault: document.getElementById('a_captions').checked
+  };
+  saveState();
+  renderA11y(document.getElementById('contentArea'));
+  toast('Accessibility saved','♿');
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ PREVIEW                                      ║
+// ╚══════════════════════════════════════════════╝
+function renderPreviewPage(area) {
+  area.innerHTML = `
+    <div class="page-head">
+      <div><h1>Preview the reader portal</h1><p class="sub">This shows exactly what readers will see — published issues only.</p></div>
+      <button class="btn btn-primary" onclick="previewAsReader()">Open reader view 👁️</button>
+    </div>
+    <div class="panel">
+      <p>The reader portal is generated from your CMS content. Drafts never appear. Each time you publish:</p>
+      <ul style="margin:14px 0 0 22px;font-size:14px;line-height:1.9;">
+        <li>✅ <strong>SEO meta tags</strong> are auto-generated and embedded in the reader page</li>
+        <li>✅ <strong>JSON-LD structured data</strong> is added for search engines</li>
+        <li>✅ <strong>Accessibility defaults</strong> from this CMS are applied</li>
+        <li>✅ Only <strong>published</strong> issues and stories are visible</li>
+      </ul>
+    </div>
+  `;
+}
+
+function previewAsReader() { renderReaderPortal(true); }
+
+// ╔══════════════════════════════════════════════╗
+// ║ READER PORTAL                                ║
+// ╚══════════════════════════════════════════════╝
+function renderReaderPortal(fromPreview) {
+  document.getElementById('portal').classList.remove('active');
+  document.getElementById('reader').style.display = 'block';
+
+  // Apply SEO to <head> live
+  applySEOTags(buildSEOFor(null));
+  // Apply a11y body classes
+  applyA11yClasses();
+
+  const published = DB.issues.filter(i => i.status === 'published');
+  const publishedStories = id => {
+    const s = DB.stories.find(x => x.id === id);
+    return s && s.status === 'published' ? s : null;
+  };
+
+  const featured = published[0];
+  const featuredStories = featured ? featured.stories.map(publishedStories).filter(Boolean) : [];
+  const otherStories = DB.stories.filter(s => s.status === 'published' && (!featured || !featured.stories.includes(s.id)));
+
+  const reader = document.getElementById('reader');
+  reader.innerHTML = `
+    <div class="reader-topbar">
+      <div class="logo">
+        <div class="mark">${escapeHtml(DB.site.logoEmoji)}</div>
+        <span>${escapeHtml(DB.site.name)}</span>
+      </div>
+      <nav class="reader-nav" aria-label="Main">
+        ${DB.site.header.nav.map(n => `<a href="${escapeAttr(n.href)}">${escapeHtml(n.label)}</a>`).join('')}
+      </nav>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-ghost btn-sm" onclick="toggleA11yLarge()" title="Toggle large text">🔍 A</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleA11yContrast()" title="Toggle high contrast">🌓</button>
+        ${fromPreview && SESSION.role === 'publisher'
+          ? `<button class="btn btn-ghost btn-sm" onclick="backToPortal()">← back to CMS</button>`
+          : `<button class="btn btn-ghost btn-sm" onclick="logout()">Sign out</button>`}
+      </div>
+    </div>
+
+    ${published.length === 0 ? `
+      <div class="reader-grid">
+        <div class="empty-state">
+          <span class="big">📭</span>
+          <h2 style="font-size:22px;margin-bottom:8px;">Nothing published yet</h2>
+          <p>When the publisher publishes an issue, you'll see it here.</p>
+        </div>
+      </div>
+    ` : `
+      ${featured ? `
+        <section class="reader-hero" aria-labelledby="hero-h">
+          <span class="pill">📰 Latest issue · published ${formatDate(featured.publishedAt)}</span>
+          <h1 id="hero-h">${escapeHtml(featured.title)}</h1>
+          <p>${escapeHtml(featured.description || DB.site.tagline)}</p>
+        </section>
+        <section class="reader-grid" aria-labelledby="featured-h">
+          <h2 id="featured-h" style="font-size:22px;margin-bottom:14px;">In this issue</h2>
+          <div class="stories-grid">
+            ${featuredStories.map(s => readerStoryCard(s)).join('') || '<p style="color:var(--ink-soft)">No stories yet in this issue.</p>'}
+          </div>
+        </section>
+      ` : ''}
+
+      ${otherStories.length ? `
+        <section class="reader-grid" style="margin-top:36px;" aria-labelledby="more-h">
+          <h2 id="more-h" style="font-size:22px;margin-bottom:14px;">More stories</h2>
+          <div class="stories-grid">
+            ${otherStories.map(s => readerStoryCard(s)).join('')}
+          </div>
+        </section>
+      ` : ''}
+
+      ${published.length > 1 ? `
+        <section class="reader-grid" style="margin-top:36px;" aria-labelledby="archive-h">
+          <h2 id="archive-h" style="font-size:22px;margin-bottom:14px;">Past issues</h2>
+          <div class="stories-grid">
+            ${published.slice(1).map(i => `
+              <div class="scard">
+                <div class="scard-cover" style="background:linear-gradient(135deg,var(--lavender),var(--peach));">${i.cover}</div>
+                <div class="scard-body">
+                  <span class="scard-tag">${formatDate(i.publishedAt)}</span>
+                  <h3>${escapeHtml(i.title)}</h3>
+                  <p>${escapeHtml(i.description || '')}</p>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+      ` : ''}
+    `}
+
+    <footer class="reader-footer" role="contentinfo">
+      <div class="reader-footer-inner">
+        <div>
+          <h4>${escapeHtml(DB.site.name)}</h4>
+          <p style="color:var(--ink-soft);font-size:13px;line-height:1.5;">${escapeHtml(DB.site.footer.about)}</p>
+        </div>
+        ${DB.site.footer.sections.map(sec => `
+          <div>
+            <h4>${escapeHtml(sec.title)}</h4>
+            ${sec.links.map(l => `<a href="${escapeAttr(l.href)}">${escapeHtml(l.label)}</a>`).join('')}
+          </div>
+        `).join('')}
+        <p class="copy" style="grid-column:1/-1;">${escapeHtml(DB.site.footer.copy)}</p>
+      </div>
+    </footer>
+  `;
+  window.scrollTo({top:0});
+}
+
+function readerStoryCard(s) {
+  return `
+    <article class="scard" onclick="openStoryModal('${s.id}')" tabindex="0" role="button" aria-label="Read ${escapeAttr(s.title)}">
+      <div class="scard-cover" style="background:linear-gradient(135deg,var(--${s.color}),var(--cream-2));">${s.cover}</div>
+      <div class="scard-body">
+        <span class="scard-tag">${escapeHtml(s.tag)}</span>
+        <h3>${escapeHtml(s.title)}</h3>
+        <p>${escapeHtml(s.summary)}</p>
+      </div>
+    </article>
+  `;
+}
+
+function backToPortal() {
+  document.getElementById('reader').style.display = 'none';
+  document.getElementById('portal').classList.add('active');
+}
+
+// Reader story modal w/ TTS
+let modalState = { id:null, page:0, rate:1.0, reading:false };
+function openStoryModal(id) {
+  const s = DB.stories.find(x => x.id === id);
+  if (!s) return;
+  modalState = { id, page:0, rate:1.0, reading:false };
+  renderStoryModal();
+  document.getElementById('storyModal').classList.add('open');
+}
+
+function renderStoryModal() {
+  const s = DB.stories.find(x => x.id === modalState.id);
+  if (!s) return;
+  const el = document.getElementById('storyModal');
+  el.innerHTML = `
+    <div class="story-modal" role="dialog" aria-labelledby="sm-title">
+      <div class="story-mhead">
+        <button class="close-btn" onclick="closeStoryModal()" aria-label="Close">✕</button>
+        <div style="flex:1;">
+          <h2 id="sm-title" style="font-size:18px;">${escapeHtml(s.title)}</h2>
+          <p style="color:var(--ink-soft);font-size:12px;">${escapeHtml(s.tag)} · ${s.pages.length} pages</p>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleStoryTTS()" aria-label="Read aloud">${modalState.reading ? '⏸ Stop' : '🔊 Read aloud'}</button>
+      </div>
+      <div class="story-mbody">
+        <div class="story-mart">${s.cover}</div>
+        <div class="story-mtext" id="smText">${escapeHtml(s.pages[modalState.page])}</div>
+      </div>
+      <div class="story-mfoot">
+        <button class="btn btn-ghost btn-sm" onclick="prevModalPage()" ${modalState.page===0?'disabled':''}>← Prev</button>
+        <div class="page-dots">
+          ${s.pages.map((_,i) => `<div class="page-dot ${i===modalState.page?'active':''}"></div>`).join('')}
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="nextModalPage()">${modalState.page===s.pages.length-1 ? 'Finish 🎉' : 'Next →'}</button>
+      </div>
+    </div>
+  `;
+  // click outside to close
+  el.onclick = (e) => { if (e.target === el) closeStoryModal(); };
+}
+
+function nextModalPage() {
+  const s = DB.stories.find(x => x.id === modalState.id);
+  stopStoryTTS();
+  if (modalState.page < s.pages.length - 1) {
+    modalState.page++;
+    renderStoryModal();
+  } else {
+    closeStoryModal();
+    toast('Story finished! ⭐','🎉');
+  }
+}
+function prevModalPage() {
+  if (modalState.page > 0) {
+    stopStoryTTS();
+    modalState.page--;
+    renderStoryModal();
+  }
+}
+function closeStoryModal() {
+  stopStoryTTS();
+  document.getElementById('storyModal').classList.remove('open');
+}
+function toggleStoryTTS() {
+  if (modalState.reading) { stopStoryTTS(); return; }
+  const text = document.getElementById('smText')?.textContent;
+  if (!text || !('speechSynthesis' in window)) { toast('Sorry, this browser can\'t read aloud.','😢'); return; }
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = modalState.rate; u.pitch = 1.15;
+  u.onend = () => { modalState.reading = false; renderStoryModal(); };
+  u.onerror = u.onend;
+  speechSynthesis.speak(u);
+  modalState.reading = true;
+  renderStoryModal();
+}
+function stopStoryTTS() {
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  modalState.reading = false;
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ SEO INJECTION (into live <head>)             ║
+// ╚══════════════════════════════════════════════╝
+function applySEOTags(seo) {
+  document.title = seo.title;
+  setMeta('description', seo.description);
+  setMeta('keywords', seo.keywords.join(', '));
+  setMeta('og:title', seo.title, 'property');
+  setMeta('og:description', seo.description, 'property');
+  setMeta('og:type', 'website', 'property');
+  setMeta('twitter:card', 'summary_large_image');
+  // JSON-LD
+  let ld = document.getElementById('ld-json');
+  if (!ld) {
+    ld = document.createElement('script');
+    ld.id = 'ld-json';
+    ld.type = 'application/ld+json';
+    document.head.appendChild(ld);
+  }
+  ld.textContent = JSON.stringify(seo.jsonLd);
+}
+function setMeta(name, value, attr='name') {
+  let el = document.querySelector(`meta[${attr}="${name}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, name);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', value);
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ A11Y CLASS TOGGLES                           ║
+// ╚══════════════════════════════════════════════╝
+function applyA11yClasses() {
+  document.body.classList.toggle('a11y-large', DB.site.a11y.largeText);
+  document.body.classList.toggle('a11y-high-contrast', DB.site.a11y.highContrast);
+}
+function toggleA11yLarge() { document.body.classList.toggle('a11y-large'); toast('Large text toggled','🔍'); }
+function toggleA11yContrast() { document.body.classList.toggle('a11y-high-contrast'); toast('Contrast toggled','🌓'); }
+
+// ╔══════════════════════════════════════════════╗
+// ║ HELPERS                                      ║
+// ╚══════════════════════════════════════════════╝
+function escapeHtml(s) {
+  if (s === undefined || s === null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+function openDrawer() { document.getElementById('drawerWrap').classList.add('open'); }
+function closeDrawer() { document.getElementById('drawerWrap').classList.remove('open'); }
+function toast(msg, em='✨') {
+  const t = document.getElementById('toast');
+  t.querySelector('#toastMsg').textContent = msg;
+  t.querySelector('.em').textContent = em;
+  t.classList.add('show');
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(() => t.classList.remove('show'), 2400);
+}
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+// ╔══════════════════════════════════════════════╗
+// ║ INIT                                         ║
+// ╚══════════════════════════════════════════════╝
+window.addEventListener('DOMContentLoaded', () => {
+  // login screen visible by default
+});
+</script>
+</body>
+</html>
