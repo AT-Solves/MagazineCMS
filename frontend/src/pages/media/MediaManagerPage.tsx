@@ -5,7 +5,7 @@ import {
   ToggleButtonGroup, Tooltip, Dialog, DialogTitle, DialogContent,
   DialogActions, Alert, Tabs, Tab, Select, MenuItem, FormControl,
   InputLabel, Divider, Paper, List, ListItem, ListItemText,
-  ListItemIcon, Snackbar,
+  ListItemIcon, Snackbar, CircularProgress,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import GridViewIcon from '@mui/icons-material/GridView';
@@ -20,9 +20,14 @@ import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import FolderIcon from '@mui/icons-material/Folder';
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
 import CropIcon from '@mui/icons-material/Crop';
+import MovieIcon from '@mui/icons-material/Movie';
+import RotateLeftIcon from '@mui/icons-material/RotateLeft';
+import RotateRightIcon from '@mui/icons-material/RotateRight';
+import FlipIcon from '@mui/icons-material/Flip';
 
 import { useMediaStore, formatSize } from '../../stores/media.store';
 import AITextField from '../../components/ai/AITextField';
+import VideoCreatorDialog from './VideoCreatorDialog';
 
 const BG_COLORS = ['#E8F5E9', '#E3F2FD', '#F3E5F5', '#FFF3E0', '#E0F2F1', '#FCE4EC'];
 
@@ -173,70 +178,135 @@ function loadFolders(): MediaFolder[] {
   ]; } catch { return []; }
 }
 
-// ── Image Crop Dialog ─────────────────────────────────────────────────────────
+// ── Image Editor Dialog ───────────────────────────────────────────────────────
 function ImageCropDialog({ asset, onClose, onSave }: {
   asset: { url: string; filename: string; altText: string } | null;
   onClose: () => void;
   onSave: (url: string, filename: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [scale, setScale] = useState(100);
-  const [offsetX, setOffsetX] = useState(0);
-  const [offsetY, setOffsetY] = useState(0);
+  const imgRef    = useRef<HTMLImageElement | null>(null);
+  const [scale,      setScale]      = useState(100);
+  const [offsetX,    setOffsetX]    = useState(0);
+  const [offsetY,    setOffsetY]    = useState(0);
+  const [brightness, setBrightness] = useState(100);
+  const [contrast,   setContrast]   = useState(100);
+  const [rotation,   setRotation]   = useState(0);
+  const [flipH,      setFlipH]      = useState(false);
+  const [flipV,      setFlipV]      = useState(false);
+
+  const redraw = useCallback(() => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    if (!canvas || !img || !img.complete) return;
+
+    const isRotated90 = rotation === 90 || rotation === 270;
+    const baseW = isRotated90 ? img.height : img.width;
+    const baseH = isRotated90 ? img.width  : img.height;
+    const maxW = 380; const maxH = 260;
+    const ratio = Math.min(maxW / baseW, maxH / baseH, 1) * (scale / 100);
+    canvas.width  = Math.max(1, Math.round(baseW * ratio));
+    canvas.height = Math.max(1, Math.round(baseH * ratio));
+
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+    ctx.save();
+    ctx.translate(canvas.width / 2 + offsetX, canvas.height / 2 + offsetY);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+    ctx.drawImage(img, -img.width * ratio / 2, -img.height * ratio / 2, img.width * ratio, img.height * ratio);
+    ctx.restore();
+  }, [scale, offsetX, offsetY, brightness, contrast, rotation, flipH, flipV]);
 
   useEffect(() => {
-    if (!asset?.url || !canvasRef.current) return;
+    if (!asset?.url) return;
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = canvasRef.current!;
-      const maxW = 360; const maxH = 240;
-      const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
-      canvas.width = img.width * ratio * (scale / 100);
-      canvas.height = img.height * ratio * (scale / 100);
-      const ctx = canvas.getContext('2d')!;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, offsetX, offsetY, img.width * (scale / 100) - offsetX, img.height * (scale / 100) - offsetY, 0, 0, canvas.width, canvas.height);
-    };
+    img.onload = () => { imgRef.current = img; redraw(); };
     img.src = asset.url;
-  }, [asset, scale, offsetX, offsetY]);
+  }, [asset]);
+
+  useEffect(() => { redraw(); }, [redraw]);
+
+  const rotate = (dir: 'left' | 'right') =>
+    setRotation((r) => (r + (dir === 'right' ? 90 : -90) + 360) % 360);
+
+  const resetAll = () => {
+    setScale(100); setOffsetX(0); setOffsetY(0);
+    setBrightness(100); setContrast(100); setRotation(0);
+    setFlipH(false); setFlipV(false);
+  };
 
   const handleSave = () => {
     const canvas = canvasRef.current;
     if (!canvas || !asset) return;
     canvas.toBlob((blob) => {
       if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      onSave(url, `cropped-${asset.filename}`);
+      onSave(URL.createObjectURL(blob), `edited-${asset.filename}`);
     }, 'image/jpeg', 0.92);
   };
 
+  const Slider = ({ label, value, min, max, onChange, unit = '' }: {
+    label: string; value: number; min: number; max: number; unit?: string;
+    onChange: (v: number) => void;
+  }) => (
+    <Box sx={{ flex: 1 }}>
+      <Typography variant="caption" color="text.secondary">{label}: <strong>{value}{unit}</strong></Typography>
+      <Box component="input" type="range" min={min} max={max} value={value}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(Number(e.target.value))}
+        style={{ width: '100%', accentColor: '#2E7D32' }} />
+    </Box>
+  );
+
   if (!asset) return null;
   return (
-    <Dialog open={!!asset} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={!!asset} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <CropIcon color="primary" /> Crop &amp; Resize Image
+        <CropIcon color="primary" /> Image Editor
       </DialogTitle>
       <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: 'grey.100', p: 1, minHeight: 200, alignItems: 'center' }}>
-            <canvas ref={canvasRef} style={{ maxWidth: '100%', display: 'block', borderRadius: 4 }} />
-          </Box>
-          <Box>
-            <Typography variant="body2" gutterBottom>Scale: {scale}%</Typography>
-            <Box component="input" type="range" min={10} max={200} value={scale} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScale(Number(e.target.value))} style={{ width: '100%' }} />
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" gutterBottom>Pan X: {offsetX}px</Typography>
-              <Box component="input" type="range" min={-200} max={200} value={offsetX} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOffsetX(Number(e.target.value))} style={{ width: '100%' }} />
+        <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+          {/* Canvas preview */}
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: 'grey.100', p: 1, minHeight: 220, alignItems: 'center' }}>
+              <canvas ref={canvasRef} style={{ maxWidth: '100%', display: 'block', borderRadius: 4 }} />
             </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" gutterBottom>Pan Y: {offsetY}px</Typography>
-              <Box component="input" type="range" min={-200} max={200} value={offsetY} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOffsetY(Number(e.target.value))} style={{ width: '100%' }} />
+            {/* Rotate & Flip */}
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Tooltip title="Rotate left 90°">
+                <IconButton size="small" onClick={() => rotate('left')}><RotateLeftIcon /></IconButton>
+              </Tooltip>
+              <Tooltip title="Rotate right 90°">
+                <IconButton size="small" onClick={() => rotate('right')}><RotateRightIcon /></IconButton>
+              </Tooltip>
+              <Tooltip title="Flip horizontal">
+                <IconButton size="small" color={flipH ? 'primary' : 'default'} onClick={() => setFlipH((v) => !v)}>
+                  <FlipIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Flip vertical">
+                <IconButton size="small" color={flipV ? 'primary' : 'default'} onClick={() => setFlipV((v) => !v)}
+                  sx={{ transform: 'rotate(90deg)' }}>
+                  <FlipIcon />
+                </IconButton>
+              </Tooltip>
+              <Button size="small" variant="text" onClick={resetAll} sx={{ fontSize: '0.72rem' }}>Reset all</Button>
             </Box>
           </Box>
-          <Alert severity="info" sx={{ fontSize: '0.78rem' }}>Editing creates a new asset — the original is preserved.</Alert>
+
+          {/* Controls */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 180 }}>
+            <Slider label="Scale"      value={scale}      min={10}  max={200} unit="%" onChange={setScale} />
+            <Slider label="Brightness" value={brightness} min={20}  max={200} unit="%" onChange={setBrightness} />
+            <Slider label="Contrast"   value={contrast}   min={20}  max={200} unit="%" onChange={setContrast} />
+            <Divider />
+            <Slider label="Pan X" value={offsetX} min={-150} max={150} unit="px" onChange={setOffsetX} />
+            <Slider label="Pan Y" value={offsetY} min={-150} max={150} unit="px" onChange={setOffsetY} />
+            <Alert severity="info" sx={{ fontSize: '0.72rem', py: 0.5 }}>
+              Saves as a new asset — original is preserved.
+            </Alert>
+          </Box>
         </Box>
       </DialogContent>
       <DialogActions>
@@ -246,6 +316,7 @@ function ImageCropDialog({ asset, onClose, onSave }: {
     </Dialog>
   );
 }
+
 
 // ── Create Image Dialog ───────────────────────────────────────────────────────
 function CreateImageDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -506,9 +577,10 @@ export default function MediaManagerPage() {
   const { search, setSearch, filteredAssets, addAsset, deleteAsset } = useMediaStore();
   const assets = filteredAssets();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [videoOpen, setVideoOpen] = useState(false);
+  const [uploadOpen,    setUploadOpen]    = useState(false);
+  const [createOpen,    setCreateOpen]    = useState(false);
+  const [videoOpen,     setVideoOpen]     = useState(false);
+  const [videoGenOpen,  setVideoGenOpen]  = useState(false);
   const [filterTab, setFilterTab] = useState(0);
   const [pageTab, setPageTab] = useState(0);
   const [cropAsset, setCropAsset] = useState<{ url: string; filename: string; altText: string } | null>(null);
@@ -566,6 +638,9 @@ export default function MediaManagerPage() {
   const isVideo = (a: ReturnType<typeof filteredAssets>[number]) =>
     a.mimeType.startsWith('video/') || a.mimeType === 'video/embed';
 
+  const isVideoGenerated = (a: ReturnType<typeof filteredAssets>[number]) =>
+    a.mimeType === 'video/generated';
+
   return (
     <Box>
       {/* Header */}
@@ -579,6 +654,9 @@ export default function MediaManagerPage() {
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button variant="outlined" color="secondary" startIcon={<VideoLibraryIcon />} onClick={() => setVideoOpen(true)}>
             Add Video
+          </Button>
+          <Button variant="outlined" color="secondary" startIcon={<MovieIcon />} onClick={() => setVideoGenOpen(true)}>
+            Create Video
           </Button>
           <Button variant="outlined" color="primary" startIcon={<AddPhotoAlternateIcon />} onClick={() => setCreateOpen(true)}>
             Create Image
@@ -668,7 +746,15 @@ export default function MediaManagerPage() {
                 <CardMedia
                   sx={{ height: 160, bgcolor: BG_COLORS[i % BG_COLORS.length], display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' }}
                 >
-                  {isVideo(asset) ? (
+                  {isVideoGenerated(asset) && asset.url ? (
+                    <>
+                      <Box component="img" src={asset.url} alt={asset.altText} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(0,0,0,0.15)' }}>
+                        <PlayCircleOutlineIcon sx={{ fontSize: 40, color: 'white', opacity: 0.9 }} />
+                      </Box>
+                      <Chip label="AI Video" size="small" color="secondary" sx={{ position: 'absolute', top: 6, left: 6, height: 18, fontSize: '0.6rem' }} />
+                    </>
+                  ) : isVideo(asset) ? (
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
                       <PlayCircleOutlineIcon sx={{ fontSize: 56, color: 'text.disabled' }} />
                       <Typography variant="caption" color="text.disabled">{asset.mimeType === 'video/embed' ? 'Embed' : 'Video'}</Typography>
@@ -789,6 +875,7 @@ export default function MediaManagerPage() {
 
       <CreateImageDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <AddVideoDialog open={videoOpen} onClose={() => setVideoOpen(false)} />
+      <VideoCreatorDialog open={videoGenOpen} onClose={() => setVideoGenOpen(false)} />
       <ImageCropDialog asset={cropAsset} onClose={() => setCropAsset(null)} onSave={handleCropSave} />
       <Snackbar open={!!snack} autoHideDuration={3000} onClose={() => setSnack('')} message={snack} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} />
     </Box>

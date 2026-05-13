@@ -609,6 +609,89 @@ export async function suggestFieldValue(params: {
   return res.json();
 }
 
+// ─── Body HTML builder (demo mode) ────────────────────────────────────────────
+
+function buildBodyHtml(
+  title: string,
+  sections: AIOutlineSection[],
+  category: string,
+  ageGroup: string,
+): string {
+  const topic = title.toLowerCase() || category.toLowerCase() || 'this topic';
+  const kws = extractKeywords(title, '', 8);
+  const isYoung = /^(3|6|8)/.test(ageGroup);
+
+  const pickKw = (i: number) => kws[i % Math.max(kws.length, 1)] ?? topic;
+
+  const parts = sections.map((section, idx) => {
+    const kw0 = pickKw(idx);
+    const kw1 = pickKw(idx + 1);
+    const paras: string[] = [];
+
+    if (idx === 0) {
+      paras.push(
+        `<p>${isYoung
+          ? `Have you ever wondered about ${topic}? It's one of the most amazing things in ${category.toLowerCase()}! In this article, we're going to explore what makes ${topic} so special and why so many people find it fascinating.`
+          : `${title || category} stands as one of the most compelling subjects in ${category.toLowerCase()}. In this piece, we examine the key aspects of ${topic} and what makes it so significant in today's world.`
+        }</p>`,
+      );
+      paras.push(`<p>${section.description}</p>`);
+    } else if (idx === sections.length - 1) {
+      paras.push(
+        `<p>${isYoung
+          ? `We've learned so much about ${topic} today! The more you explore ${kw0}, the more amazing things you'll discover. Keep asking questions and never stop being curious!`
+          : `${title || topic} continues to evolve and inspire. The insights explored here represent just the beginning — as our understanding of ${category.toLowerCase()} advances, the significance of ${topic} will only grow.`
+        }</p>`,
+      );
+    } else {
+      paras.push(`<p>${section.description}</p>`);
+      paras.push(
+        `<p>Research has shown that ${kw0} plays a pivotal role in how we understand ${topic}. When we examine ${kw1} in this context, patterns begin to emerge that shed new light on the subject as a whole.</p>`,
+      );
+      if (section.wordTarget > 200) {
+        paras.push(
+          `<p>Experts in ${category.toLowerCase()} have noted that ${kw0} and ${kw1} are deeply interconnected. Understanding this relationship is key to a fuller appreciation of ${topic} and its broader implications.</p>`,
+        );
+      }
+    }
+
+    return `<h2>${section.heading}</h2>\n${paras.join('\n')}`;
+  });
+
+  return parts.join('\n\n');
+}
+
+export interface AIGenerateBodyResult {
+  html: string;
+  wordCount: number;
+  sectionsGenerated: number;
+}
+
+export async function generateBodyContent(params: {
+  title: string;
+  type: string;
+  category: string;
+  ageGroup?: string;
+}): Promise<AIGenerateBodyResult> {
+  const { title, type, category, ageGroup = 'all' } = params;
+
+  if (DEMO_MODE) {
+    await delay(1400 + Math.random() * 800);
+    const outline = buildOutline(type, category, '');
+    const html = buildBodyHtml(title, outline, category, ageGroup);
+    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    return { html, wordCount: words(text).length, sectionsGenerated: outline.length };
+  }
+
+  const res = await fetch(`${API_BASE}/ai/generate-body`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error('AI body generation unavailable');
+  return res.json();
+}
+
 export async function improveText(params: {
   text: string;
   instruction: string;
@@ -634,5 +717,175 @@ export async function improveText(params: {
     body: JSON.stringify(params),
   });
   if (!res.ok) throw new Error('AI service unavailable');
+  return res.json();
+}
+
+// ─── Video Story Types ─────────────────────────────────────────────────────────
+
+export type CharacterRole = 'hero' | 'mentor' | 'sidekick' | 'explorer' | 'scientist' | 'artist' | 'villain' | 'narrator' | 'custom';
+
+export interface VideoCharacter {
+  id: string;
+  name: string;
+  role: CharacterRole;
+  personality: string;
+  color: string;
+  emoji: string;
+  imageUrl?: string; // from media library
+}
+
+export interface VideoScene {
+  sceneNumber: number;
+  title: string;
+  setting: string;
+  action: string;
+  narration: string;
+  characters: string[];
+  visualNote: string;
+  duration: number;
+}
+
+export interface VideoStory {
+  title: string;
+  logline: string;
+  genre: string;
+  productionStyle: string;
+  scenes: VideoScene[];
+  totalDuration: number;
+  narrationScript: string;
+}
+
+// ─── Video Story Builder (demo mode) ──────────────────────────────────────────
+
+function buildVideoStory(
+  premise: string,
+  genre: string,
+  cast: VideoCharacter[],
+  productionStyle: string,
+  durationMin: number,
+): VideoStory {
+  const topic = premise || 'an extraordinary journey';
+  const hero    = cast[0]?.name ?? 'Alex';
+  const sidekick = cast.find(c => c.role === 'sidekick')?.name ?? cast[1]?.name ?? 'Jordan';
+  const mentor  = cast.find(c => c.role === 'mentor')?.name ?? 'Morgan';
+
+  const sceneCount = Math.max(3, Math.min(8, Math.round(durationMin * 0.7)));
+  const secPerScene = Math.round((durationMin * 60) / sceneCount);
+
+  type SceneTemplate = Omit<VideoScene, 'sceneNumber' | 'duration'>;
+
+  const styleNote = (s: string) => ({
+    animated: 'Bright cel-shaded colours, bold outlines, exaggerated expressions',
+    cartoon:  'Playful character designs, squash-and-stretch physics, vivid palette',
+    cgi:      'Photorealistic 3D render, sub-surface skin shading, ray-traced lighting',
+    live_action: 'Handheld camera, natural lighting, real location',
+    whiteboard: 'Black marker on white board, drawn line by line',
+    manga:    'High-contrast ink panels, speed lines, screentone halftone fills',
+    cinematic:'Anamorphic wide lens, shallow depth of field, film-grade colour',
+    watercolor:'Soft painted washes, visible paper texture, loose brushwork',
+    stop_motion:'Tangible clay/felt characters, imperfect handmade backdrops',
+  }[s] ?? 'Cinematic framing');
+
+  const vNote = styleNote(productionStyle);
+
+  const genreTemplates: Record<string, SceneTemplate[]> = {
+    adventure: [
+      { title: 'The Call to Adventure', setting: 'A familiar world on the brink of change', action: `${hero} stumbles upon a mysterious clue hidden in plain sight.`, narration: `In a world where everything seemed ordinary, ${hero} was about to discover that extraordinary things happen to those who dare to look closer.`, characters: [hero], visualNote: vNote },
+      { title: 'Meeting the Ally', setting: 'A chance encounter on the road less travelled', action: `${sidekick} joins ${hero} — their contrasting skills already proving complementary.`, narration: `No great journey is walked alone. ${sidekick} appeared at exactly the right moment, as if destiny had arranged the meeting.`, characters: [hero, sidekick], visualNote: vNote },
+      { title: 'The Mentor\'s Wisdom', setting: 'An ancient library, cave, or hidden workshop', action: `${mentor} shares the knowledge that will prove crucial in the trials ahead.`, narration: `"The answer you seek," ${mentor} said quietly, "has always been within you. You simply needed to be ready to hear it."`, characters: [mentor, hero], visualNote: vNote },
+      { title: 'Trial by Fire', setting: 'The point of no return', action: `The team faces their greatest obstacle — only ingenuity and trust can carry them through.`, narration: `Every hero's journey reaches a moment that seems impossible. This was that moment. And it was only the beginning.`, characters: [hero, sidekick], visualNote: vNote },
+      { title: 'The Heart of the Mystery', setting: 'The innermost cave — the most dangerous place', action: `${hero} confronts the core challenge, drawing on everything learned so far.`, narration: `This was what everything had been building towards. The choice was ${hero}'s alone to make.`, characters: [hero], visualNote: vNote },
+      { title: 'Return Transformed', setting: 'Back home, but seen with new eyes', action: `${hero} and ${sidekick} return, changed forever, ready to share what was won.`, narration: `The greatest journeys don't just take you somewhere new — they bring you back different. And neither ${hero} nor ${sidekick} would ever be the same again.`, characters: [hero, sidekick, mentor], visualNote: vNote },
+    ],
+    educational: [
+      { title: 'The Big Question', setting: 'A classroom, lab, or wide natural landscape', action: `${hero} poses the question that drives everything: why does ${topic} happen?`, narration: `Have you ever stopped to wonder: ${topic}? Today, we're going to explore one of the most fascinating questions in our world — together.`, characters: [hero], visualNote: vNote },
+      { title: 'Digging into History', setting: 'Through time — key moments of discovery', action: `${mentor} walks ${hero} through the key breakthroughs that shaped understanding.`, narration: `To understand where we are, we first need to see where we came from. The story of ${topic} stretches back further than most people realise.`, characters: [mentor, hero], visualNote: vNote },
+      { title: 'The Science Unveiled', setting: 'Inside the lab or out in the field', action: `${sidekick} demonstrates the core mechanism with a hands-on experiment.`, narration: `Here's where it gets truly remarkable. The science behind ${topic} reveals some of the most elegant patterns in all of nature.`, characters: [sidekick, hero], visualNote: vNote },
+      { title: 'Real-World Impact', setting: 'Cities, ecosystems, and everyday life', action: `Evidence of ${topic} is everywhere — the team spots examples in surprising places.`, narration: `This isn't abstract knowledge. Understanding ${topic} changes how we see and interact with the world around us every single day.`, characters: [hero, sidekick], visualNote: vNote },
+      { title: 'Your Turn', setting: 'Looking straight into the camera', action: `${hero} invites the audience to carry the inquiry forward.`, narration: `The next great discovery might just be yours. Scientists, explorers, and curious minds like you are still uncovering new aspects of ${topic} every day.`, characters: [hero], visualNote: vNote },
+    ],
+    mystery: [
+      { title: 'Something is Wrong', setting: 'An ordinary scene with an extraordinary detail', action: `${hero} notices something that doesn't add up — an anomaly everyone else missed.`, narration: `It started like any other day. But ${hero} had that feeling — the quiet certainty that something was very wrong.`, characters: [hero], visualNote: vNote },
+      { title: 'The First Clues', setting: 'Through archives, crime scenes, or hidden corners', action: `${hero} and ${sidekick} begin assembling the puzzle, piece by careful piece.`, narration: `Every mystery leaves traces. You simply have to know where to look — and how to read what you find.`, characters: [hero, sidekick], visualNote: vNote },
+      { title: 'A Dangerous Lead', setting: 'Somewhere they shouldn\'t be', action: `The investigation pulls ${hero} into territory that puts them at risk.`, narration: `Some truths don't want to be found. ${hero} was about to learn exactly how far people will go to keep a secret buried.`, characters: [hero, mentor], visualNote: vNote },
+      { title: 'The Twist', setting: 'The moment everything is flipped upside down', action: `A revelation dismantles everything ${hero} thought they understood.`, narration: `And then — in one shattering instant — the picture changed completely. The truth was far stranger, and far deeper, than anyone had imagined.`, characters: [hero, sidekick], visualNote: vNote },
+      { title: 'The Reckoning', setting: 'A final confrontation', action: `${hero} assembles the complete truth and brings it to light.`, narration: `${hero} had pieced it all together. Now came the hardest part: making sure the truth stayed in the light.`, characters: [hero, sidekick, mentor], visualNote: vNote },
+    ],
+    fantasy: [
+      { title: 'A World Unlike Our Own', setting: 'The edge of a magical realm at dawn', action: `The audience is plunged into a world where the ordinary rules don't apply.`, narration: `Beyond the reach of maps and reason, where the sky runs in colours that have no name, lies a world that has waited a very long time for someone to find it.`, characters: [hero], visualNote: vNote },
+      { title: 'The Chosen Path', setting: 'A crossroads lit by starlight', action: `${hero} receives the call — a destiny they cannot ignore.`, narration: `It was written in the oldest languages, spoken in prophecy and dream: one would come who was born for this. Tonight, ${hero} understood that was them.`, characters: [hero, mentor], visualNote: vNote },
+      { title: 'Magic Awakens', setting: 'Deep in the enchanted heartland', action: `${hero} and ${sidekick} discover powers neither knew they possessed.`, narration: `Magic isn't learned. It's remembered. And as ${hero} and ${sidekick} reached for something beyond reason, the world reached back.`, characters: [hero, sidekick], visualNote: vNote },
+      { title: 'The Dark Hour', setting: 'Shadow falls across the land', action: `The forces of darkness make their move — and everything hangs in the balance.`, narration: `All the wonder in the world means nothing without courage. And courage, ${hero} was learning, is not the absence of fear. It's what you do with it.`, characters: cast.map(c => c.name), visualNote: vNote },
+      { title: 'Light Returns', setting: 'A transformed world at the moment of renewal', action: `Through sacrifice and hope, the magic of the realm is restored.`, narration: `And so the world was healed — not because it was easy, but because someone chose to believe it was possible. Sometimes, that's enough.`, characters: [hero, sidekick, mentor], visualNote: vNote },
+    ],
+    sci_fi: [
+      { title: 'First Contact', setting: 'The frontier of known space — or a lab at the edge of science', action: `${hero} encounters something that rewrites everything known about ${topic}.`, narration: `The universe is under no obligation to make sense to us. But on this day, in this moment, it chose to reveal one of its deepest secrets to ${hero}.`, characters: [hero], visualNote: vNote },
+      { title: 'The Science of the Impossible', setting: 'Research facility or aboard a vessel', action: `${mentor} breaks down the astonishing physics behind the discovery.`, narration: `What looked like magic was, in fact, science so advanced it bordered on the miraculous. ${mentor} helped ${hero} begin to understand the scope of what they'd found.`, characters: [mentor, hero], visualNote: vNote },
+      { title: 'Critical Mission', setting: 'Racing against time in an unknown environment', action: `The team must apply what they've learned before a window closes forever.`, narration: `The calculations gave them a narrow margin. Every second counted. Every choice mattered.`, characters: [hero, sidekick], visualNote: vNote },
+      { title: 'Humanity\'s Choice', setting: 'A moment that will define the future', action: `${hero} faces a decision that will shape civilisation.`, narration: `With great discovery comes great responsibility. ${hero} understood now that the question wasn't what they could do — it was what they should.`, characters: [hero, mentor], visualNote: vNote },
+      { title: 'A New Frontier', setting: 'The horizon of what comes next', action: `The door opens to a future that was unimaginable just days before.`, narration: `Every age of exploration ends the same way: standing at the edge of a new world, realising the journey has only just begun.`, characters: cast.map(c => c.name), visualNote: vNote },
+    ],
+    comedy: [
+      { title: 'The Best-Laid Plans', setting: 'An everyday setting that rapidly goes sideways', action: `${hero}'s perfectly reasonable idea immediately spirals out of control.`, narration: `${hero} had a plan. A brilliant, foolproof, completely reasonable plan. You can probably guess how this goes.`, characters: [hero], visualNote: vNote },
+      { title: 'Enter the Chaos', setting: 'The situation escalating beyond all logic', action: `${sidekick} makes everything considerably worse — with the best of intentions.`, narration: `And then ${sidekick} arrived. Helpful. Enthusiastic. Absolutely, catastrophically helpful.`, characters: [hero, sidekick], visualNote: vNote },
+      { title: 'Against All Odds', setting: 'The bottom of the hole they have dug themselves into', action: `They attempt to fix things, making three new problems for every one they solve.`, narration: `The good news: they had a new plan. The bad news: it was based entirely on the first plan. Which, as established, was a disaster.`, characters: [hero, sidekick, mentor], visualNote: vNote },
+      { title: 'The Glorious Mess', setting: 'Peak chaos — everything happening at once', action: `Everything collides in the most spectacular possible fashion.`, narration: `In the end, it all came together. Just not in any way they had planned. Or hoped. Or could have possibly predicted.`, characters: cast.map(c => c.name), visualNote: vNote },
+      { title: 'Somehow, It Works', setting: 'The dust settles', action: `Against all probability, the outcome is exactly what they needed.`, narration: `And somehow — impossibly, improbably, magnificently — it worked. They'd never quite agree on how. And that was probably for the best.`, characters: [hero, sidekick], visualNote: vNote },
+    ],
+  };
+
+  const fallback = genreTemplates.educational;
+  const template = genreTemplates[genre] ?? fallback;
+  const scenes: VideoScene[] = template.slice(0, sceneCount).map((t, i) => ({
+    ...t, sceneNumber: i + 1, duration: secPerScene,
+  }));
+
+  const narrationScript = scenes.map(s =>
+    `[ Scene ${s.sceneNumber}: ${s.title} ]\n` +
+    `Setting: ${s.setting}\n` +
+    `Action: ${s.action}\n\n` +
+    `NARRATION:\n"${s.narration}"\n`
+  ).join('\n─────────────────────────────\n\n');
+
+  const loglines: Record<string, string> = {
+    adventure:   `Join ${hero} on an unforgettable quest to uncover the truth about ${topic}.`,
+    educational: `Explore the wonders of ${topic} alongside ${hero} in this illuminating journey of discovery.`,
+    mystery:     `${hero} must unravel the secrets of ${topic} before the truth is buried forever.`,
+    fantasy:     `In a realm of magic and wonder, ${hero} must master the power of ${topic} to save everything they love.`,
+    sci_fi:      `When ${hero} discovers the impossible truth about ${topic}, the future of humanity hangs in the balance.`,
+    comedy:      `${hero}'s hilariously misguided attempt to understand ${topic} goes gloriously, catastrophically wrong.`,
+  };
+
+  return {
+    title: premise.length > 5 ? premise : `The Story of ${topic}`,
+    logline: loglines[genre] ?? `An unforgettable story about ${topic}.`,
+    genre,
+    productionStyle,
+    scenes,
+    totalDuration: scenes.reduce((s, sc) => s + sc.duration, 0),
+    narrationScript,
+  };
+}
+
+export async function generateVideoStory(params: {
+  premise: string;
+  genre: string;
+  cast: VideoCharacter[];
+  productionStyle: string;
+  durationMin: number;
+}): Promise<VideoStory> {
+  const { premise, genre, cast, productionStyle, durationMin } = params;
+
+  if (DEMO_MODE) {
+    await delay(1300 + Math.random() * 700);
+    return buildVideoStory(premise, genre, cast, productionStyle, durationMin);
+  }
+
+  const res = await fetch(`${API_BASE}/ai/generate-video-story`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error('Video story generation unavailable');
   return res.json();
 }
