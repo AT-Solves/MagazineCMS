@@ -33,6 +33,8 @@ import PublishingCenterPage from "./pages/publishing/PublishingCenterPage";
 import AnalyticsDashboardPage from "./pages/analytics/AnalyticsDashboardPage";
 import MediaManagerPage from "./pages/media/MediaManagerPage";
 import SettingsPage from "./pages/settings/SettingsPage";
+import EditorialCalendarPage from "./pages/editorial/EditorialCalendarPage";
+import TeamPage from "./pages/team/TeamPage";
 import NotFoundPage from "./pages/errors/NotFoundPage";
 
 // Create MUI theme
@@ -286,6 +288,28 @@ const App: React.FC = () => {
                 <ProtectedRoute>
                   <LayoutShell>
                     <SettingsPage />
+                  </LayoutShell>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/calendar"
+              element={
+                <ProtectedRoute>
+                  <LayoutShell>
+                    <EditorialCalendarPage />
+                  </LayoutShell>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/team"
+              element={
+                <ProtectedRoute>
+                  <LayoutShell>
+                    <TeamPage />
                   </LayoutShell>
                 </ProtectedRoute>
               }

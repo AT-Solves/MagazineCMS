@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Chip, IconButton, Tooltip, ToggleButtonGroup,
-  ToggleButton, Divider, Button, Paper,
+  ToggleButton, Divider, Button, Paper, Collapse,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import EditIcon from '@mui/icons-material/Edit';
@@ -11,6 +11,7 @@ import SmartphoneIcon from '@mui/icons-material/Smartphone';
 import TabletIcon from '@mui/icons-material/Tablet';
 import DesktopWindowsIcon from '@mui/icons-material/DesktopWindows';
 import ShareIcon from '@mui/icons-material/Share';
+import WebIcon from '@mui/icons-material/Web';
 
 import { useContentStore } from '../../stores/content.store';
 import { CONTENT_TYPES } from '../../constants/magazine';
@@ -40,6 +41,24 @@ export default function ContentPreviewPage() {
   const item = id ? getItem(id) : null;
 
   const [viewport, setViewport] = useState<Viewport>('desktop');
+  const [showSocialPreview, setShowSocialPreview] = useState(false);
+
+  // Inject print stylesheet that hides UI chrome
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.id = 'preview-print-style';
+    style.textContent = `
+      @media print {
+        header, nav, .MuiAppBar-root, .MuiDrawer-root { display: none !important; }
+        .preview-toolbar, .preview-statusbar { display: none !important; }
+        .preview-social { display: none !important; }
+        body { background: white !important; }
+        .preview-article { max-width: 100% !important; padding: 0 !important; }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { document.getElementById('preview-print-style')?.remove(); };
+  }, []);
 
   if (!item) {
     return (
@@ -61,7 +80,7 @@ export default function ContentPreviewPage() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: '#f0f0f0', overflow: 'hidden' }}>
       {/* Preview toolbar */}
-      <Box sx={{
+      <Box className="preview-toolbar" sx={{
         display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1,
         bgcolor: 'grey.900', color: 'white', flexShrink: 0,
       }}>
@@ -105,10 +124,53 @@ export default function ContentPreviewPage() {
             <ShareIcon fontSize="small" />
           </IconButton>
         </Tooltip>
+        <Tooltip title="Social / OG preview">
+          <IconButton
+            size="small"
+            sx={{ color: showSocialPreview ? 'primary.light' : 'white' }}
+            onClick={() => setShowSocialPreview((v) => !v)}
+          >
+            <WebIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
 
+      {/* Social / OG preview strip */}
+      <Collapse in={showSocialPreview} className="preview-social">
+        <Box sx={{ bgcolor: '#1a1a2e', px: 2, py: 1.5, display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {/* Twitter/X card */}
+          <Box sx={{ width: 440, maxWidth: '100%' }}>
+            <Typography variant="caption" color="grey.500" display="block" sx={{ mb: 0.75, letterSpacing: 1 }}>TWITTER / X CARD</Typography>
+            <Box sx={{ border: '1px solid #2d3748', borderRadius: 2, overflow: 'hidden', bgcolor: '#16202a', maxWidth: 440 }}>
+              <Box sx={{ height: 100, bgcolor: 'primary.dark', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                <Typography variant="h6" color="white" fontWeight={700} sx={{ px: 2, textAlign: 'center' }}>{item.category}</Typography>
+              </Box>
+              <Box sx={{ p: 1.5 }}>
+                <Typography variant="caption" color="grey.500" display="block" sx={{ mb: 0.25, fontSize: '0.65rem' }}>magazinecms.com</Typography>
+                <Typography variant="body2" color="white" fontWeight={600} sx={{ lineHeight: 1.3, mb: 0.5 }}>{item.seoTitle || item.title}</Typography>
+                <Typography variant="caption" color="grey.400" sx={{ fontSize: '0.72rem' }}>{(item.seoDescription || item.subtitle || '').slice(0, 120)}</Typography>
+              </Box>
+            </Box>
+          </Box>
+          {/* Facebook OG card */}
+          <Box sx={{ width: 440, maxWidth: '100%' }}>
+            <Typography variant="caption" color="grey.500" display="block" sx={{ mb: 0.75, letterSpacing: 1 }}>FACEBOOK / OPEN GRAPH</Typography>
+            <Box sx={{ border: '1px solid #2d3748', borderRadius: 1, overflow: 'hidden', bgcolor: '#f0f2f5' }}>
+              <Box sx={{ height: 120, bgcolor: 'secondary.dark', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Typography variant="h6" color="white" fontWeight={700} sx={{ px: 2, textAlign: 'center' }}>{item.tags.slice(0, 2).join(' · ') || item.category}</Typography>
+              </Box>
+              <Box sx={{ p: 1.5, borderTop: '1px solid #ddd' }}>
+                <Typography variant="caption" color="#888" display="block" sx={{ fontSize: '0.65rem', textTransform: 'uppercase', mb: 0.25 }}>MAGAZINECMS.COM</Typography>
+                <Typography variant="body2" color="#1c1e21" fontWeight={700} sx={{ lineHeight: 1.3, mb: 0.25 }}>{item.seoTitle || item.title}</Typography>
+                <Typography variant="caption" color="#606770" sx={{ fontSize: '0.72rem' }}>{(item.seoDescription || item.subtitle || '').slice(0, 100)}</Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      </Collapse>
+
       {/* Viewport info bar */}
-      <Box sx={{ px: 2, py: 0.5, bgcolor: 'grey.800', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+      <Box className="preview-statusbar" sx={{ px: 2, py: 0.5, bgcolor: 'grey.800', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
         <Typography variant="caption" color="grey.400">
           {viewport === 'mobile' ? '390px — Mobile' : viewport === 'tablet' ? '768px — Tablet' : 'Full width — Desktop'}
         </Typography>

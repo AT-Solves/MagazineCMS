@@ -3,16 +3,40 @@ import {
   Box, Typography, Card, CardContent, Grid, Chip, Button,
   Table, TableBody, TableCell, TableHead, TableRow, Switch,
   FormControlLabel, Alert, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField,
+  DialogActions, TextField, List, ListItem, ListItemIcon, ListItemText,
 } from '@mui/material';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import PublishIcon from '@mui/icons-material/Publish';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import AddIcon from '@mui/icons-material/Add';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import WarningIcon from '@mui/icons-material/Warning';
 
-import { useContentStore } from '../../stores/content.store';
+import { useContentStore, type ContentItem } from '../../stores/content.store';
 import { LOCALES, PLATFORMS } from '../../constants/magazine';
 import { useNavigate } from 'react-router-dom';
+
+interface CheckItem {
+  id: string;
+  label: string;
+  passed: boolean;
+  severity: 'error' | 'warning';
+}
+
+function getChecklist(item: ContentItem): CheckItem[] {
+  const bodyText = item.body.replace(/<[^>]*>/g, '').trim();
+  return [
+    { id: 'title',      label: 'Title is present and descriptive (>10 chars)',  passed: item.title.length > 10,          severity: 'error' },
+    { id: 'body',       label: 'Body content has substance (>200 characters)',  passed: bodyText.length > 200,            severity: 'error' },
+    { id: 'category',   label: 'Category is assigned',                          passed: !!item.category,                  severity: 'error' },
+    { id: 'word_count', label: 'Word count meets minimum (300+ words)',         passed: item.wordCount >= 300,            severity: 'warning' },
+    { id: 'seo_title',  label: 'SEO title is set',                             passed: !!item.seoTitle,                  severity: 'warning' },
+    { id: 'seo_desc',   label: 'Meta description is set',                       passed: !!item.seoDescription,            severity: 'warning' },
+    { id: 'tags',       label: 'At least 2 tags assigned',                      passed: item.tags.length >= 2,            severity: 'warning' },
+    { id: 'focus_kw',   label: 'Focus keyword is defined',                      passed: !!item.focusKeyword,              severity: 'warning' },
+  ];
+}
 
 export default function PublishingCenterPage() {
   const navigate = useNavigate();
@@ -21,6 +45,7 @@ export default function PublishingCenterPage() {
   const [scheduleId, setScheduleId] = useState<string | null>(null);
   const [scheduleDate, setScheduleDate] = useState('');
   const [schedulePlatform, setSchedulePlatform] = useState('web_app');
+  const [checklistTarget, setChecklistTarget] = useState<ContentItem | null>(null);
 
   const scheduled  = items.filter((i) => i.status === 'scheduled');
   const published  = items.filter((i) => i.status === 'published').sort((a, b) => new Date(b.publishedAt ?? 0).getTime() - new Date(a.publishedAt ?? 0).getTime());
@@ -30,7 +55,15 @@ export default function PublishingCenterPage() {
   const thisMonth  = published.filter((i) => i.publishedAt && new Date(i.publishedAt).getMonth() === new Date().getMonth()).length;
 
   const handlePublishNow = (id: string) => {
-    updateItem(id, { status: 'published', publishedAt: new Date().toISOString() });
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+    setChecklistTarget(item);
+  };
+
+  const confirmPublish = () => {
+    if (!checklistTarget) return;
+    updateItem(checklistTarget.id, { status: 'published', publishedAt: new Date().toISOString() });
+    setChecklistTarget(null);
   };
 
   const handleCancelSchedule = (id: string) => {
@@ -174,6 +207,65 @@ export default function PublishingCenterPage() {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Pre-publish checklist dialog */}
+      <Dialog open={!!checklistTarget} onClose={() => setChecklistTarget(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <PublishIcon color="primary" /> Pre-Publish Checklist
+        </DialogTitle>
+        <DialogContent>
+          {checklistTarget && (() => {
+            const checklist = getChecklist(checklistTarget);
+            const errors = checklist.filter((c) => !c.passed && c.severity === 'error');
+            const warnings = checklist.filter((c) => !c.passed && c.severity === 'warning');
+            return (
+              <>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Reviewing: <strong>{checklistTarget.title}</strong>
+                </Typography>
+                <List dense disablePadding>
+                  {checklist.map((check) => (
+                    <ListItem key={check.id} disablePadding sx={{ py: 0.5 }}>
+                      <ListItemIcon sx={{ minWidth: 32 }}>
+                        {check.passed
+                          ? <CheckCircleIcon color="success" fontSize="small" />
+                          : check.severity === 'error'
+                            ? <CancelIcon color="error" fontSize="small" />
+                            : <WarningIcon color="warning" fontSize="small" />
+                        }
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={<Typography variant="body2" color={check.passed ? 'text.primary' : check.severity === 'error' ? 'error.main' : 'warning.dark'}>{check.label}</Typography>}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+                {errors.length > 0 && (
+                  <Alert severity="error" sx={{ mt: 2 }}>{errors.length} critical issue{errors.length > 1 ? 's' : ''} must be resolved before publishing.</Alert>
+                )}
+                {errors.length === 0 && warnings.length > 0 && (
+                  <Alert severity="warning" sx={{ mt: 2 }}>{warnings.length} optional improvement{warnings.length > 1 ? 's' : ''} recommended — you can still publish.</Alert>
+                )}
+                {errors.length === 0 && warnings.length === 0 && (
+                  <Alert severity="success" sx={{ mt: 2 }}>All checks passed! Ready to publish.</Alert>
+                )}
+              </>
+            );
+          })()}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setChecklistTarget(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<PublishIcon />}
+            disabled={!!(checklistTarget && getChecklist(checklistTarget).some((c) => !c.passed && c.severity === 'error'))}
+            onClick={confirmPublish}
+          >
+            Publish Now
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Schedule dialog */}
       <Dialog open={!!scheduleId} onClose={() => setScheduleId(null)} maxWidth="xs" fullWidth>

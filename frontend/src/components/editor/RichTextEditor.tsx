@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback, useImperativeHandle, forwardRef } from 'react';
 import {
   Box, IconButton, Tooltip, Divider, Dialog, DialogTitle,
-  DialogContent, DialogActions, Button, TextField,
+  DialogContent, DialogActions, Button, TextField, Typography,
 } from '@mui/material';
 import FormatBoldIcon from '@mui/icons-material/FormatBold';
 import FormatItalicIcon from '@mui/icons-material/FormatItalic';
@@ -18,6 +18,13 @@ import MediaPickerDialog from './MediaPickerDialog';
 
 export interface RichTextEditorHandle {
   insertHTML: (html: string) => void;
+}
+
+interface ToolbarBtn {
+  label: string;
+  icon?: React.ReactNode;
+  text?: string;
+  action: () => void;
 }
 
 interface RichTextEditorProps {
@@ -161,22 +168,26 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(({
     };
   }, [emitChange]);
 
-  const toolbarButtons = [
-    { label: 'Bold',           icon: <FormatBoldIcon fontSize="small" />,         action: () => exec('bold') },
-    { label: 'Italic',         icon: <FormatItalicIcon fontSize="small" />,       action: () => exec('italic') },
-    { label: 'Underline',      icon: <FormatUnderlinedIcon fontSize="small" />,   action: () => exec('underline') },
+  const toolbarButtons: Array<ToolbarBtn | null> = [
+    { label: 'Bold',             icon: <FormatBoldIcon fontSize="small" />,         action: () => exec('bold') },
+    { label: 'Italic',           icon: <FormatItalicIcon fontSize="small" />,       action: () => exec('italic') },
+    { label: 'Underline',        icon: <FormatUnderlinedIcon fontSize="small" />,   action: () => exec('underline') },
     null,
-    { label: 'Bullet List',    icon: <FormatListBulletedIcon fontSize="small" />, action: () => exec('insertUnorderedList') },
-    { label: 'Numbered List',  icon: <FormatListNumberedIcon fontSize="small" />, action: () => exec('insertOrderedList') },
-    { label: 'Block Quote',    icon: <FormatQuoteIcon fontSize="small" />,        action: () => exec('formatBlock', '<blockquote>') },
+    { label: 'Heading 2',        text: 'H2',                                        action: () => exec('formatBlock', '<h2>') },
+    { label: 'Heading 3',        text: 'H3',                                        action: () => exec('formatBlock', '<h3>') },
+    { label: 'Heading 4',        text: 'H4',                                        action: () => exec('formatBlock', '<h4>') },
     null,
-    { label: 'Insert Link',    icon: <LinkIcon fontSize="small" />,               action: openLinkDialog },
-    { label: 'Insert Image',   icon: <ImageIcon fontSize="small" />,              action: () => { saveRange(); setMediaPickerOpen(true); } },
+    { label: 'Bullet List',      icon: <FormatListBulletedIcon fontSize="small" />, action: () => exec('insertUnorderedList') },
+    { label: 'Numbered List',    icon: <FormatListNumberedIcon fontSize="small" />, action: () => exec('insertOrderedList') },
+    { label: 'Block Quote',      icon: <FormatQuoteIcon fontSize="small" />,        action: () => exec('formatBlock', '<blockquote>') },
     null,
-    { label: 'Undo',           icon: <UndoIcon fontSize="small" />,              action: () => exec('undo') },
-    { label: 'Redo',           icon: <RedoIcon fontSize="small" />,              action: () => exec('redo') },
-    { label: 'Clear Formatting', icon: <FormatClearIcon fontSize="small" />,      action: () => exec('removeFormat') },
-  ] as const;
+    { label: 'Insert Link',      icon: <LinkIcon fontSize="small" />,               action: openLinkDialog },
+    { label: 'Insert Image',     icon: <ImageIcon fontSize="small" />,              action: () => { saveRange(); setMediaPickerOpen(true); } },
+    null,
+    { label: 'Undo',             icon: <UndoIcon fontSize="small" />,               action: () => exec('undo') },
+    { label: 'Redo',             icon: <RedoIcon fontSize="small" />,               action: () => exec('redo') },
+    { label: 'Clear Formatting', icon: <FormatClearIcon fontSize="small" />,        action: () => exec('removeFormat') },
+  ];
 
   return (
     <Box className={className} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
@@ -194,7 +205,11 @@ const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>(({
                   onMouseDown={(e) => { e.preventDefault(); btn.action(); }}
                   sx={TOOLBAR_BTN_SX}
                 >
-                  {btn.icon}
+                  {btn.icon ?? (
+                    <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.65rem', lineHeight: 1, px: 0.25 }}>
+                      {btn.text}
+                    </Typography>
+                  )}
                 </IconButton>
               </Tooltip>
             ),

@@ -13,18 +13,22 @@ import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import SettingsIcon from '@mui/icons-material/Settings';
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import PeopleIcon from '@mui/icons-material/People';
 import { useAuthStore } from '../../stores/auth.store';
 
 const DRAWER_WIDTH = 240;
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-  { label: 'Content Library', icon: <ArticleIcon />, path: '/content' },
-  { label: 'Workflow Board', icon: <AccountTreeIcon />, path: '/workflow' },
-  { label: 'Publishing', icon: <PublishIcon />, path: '/publishing' },
-  { label: 'Analytics', icon: <BarChartIcon />, path: '/analytics' },
-  { label: 'Media Manager', icon: <PhotoLibraryIcon />, path: '/media' },
-  { label: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+  { label: 'Dashboard',       icon: <DashboardIcon />,      path: '/' },
+  { label: 'Content Library', icon: <ArticleIcon />,        path: '/content' },
+  { label: 'Workflow Board',  icon: <AccountTreeIcon />,    path: '/workflow' },
+  { label: 'Calendar',        icon: <CalendarMonthIcon />,  path: '/calendar' },
+  { label: 'Publishing',      icon: <PublishIcon />,        path: '/publishing' },
+  { label: 'Analytics',       icon: <BarChartIcon />,       path: '/analytics' },
+  { label: 'Media Manager',   icon: <PhotoLibraryIcon />,   path: '/media' },
+  { label: 'Team',            icon: <PeopleIcon />,         path: '/team' },
+  { label: 'Settings',        icon: <SettingsIcon />,       path: '/settings' },
 ];
 
 const LayoutShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {

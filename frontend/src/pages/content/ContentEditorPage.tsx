@@ -4,6 +4,8 @@ import {
   Box, Typography, Button, Tabs, Tab, Grid, TextField, Select, MenuItem,
   FormControl, InputLabel, Chip, Switch, FormControlLabel, Alert,
   Paper, Snackbar, Divider, Tooltip, CircularProgress, InputAdornment,
+  Dialog, DialogTitle, DialogContent, DialogActions, IconButton, List,
+  ListItem, ListItemText,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
@@ -14,6 +16,11 @@ import CloseIcon from '@mui/icons-material/Close';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize';
 import PreviewIcon from '@mui/icons-material/Preview';
+import HistoryIcon from '@mui/icons-material/History';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 import RichTextEditor, { type RichTextEditorHandle } from '../../components/editor/RichTextEditor';
 import AISuggestionsPanel from '../../components/ai/AISuggestionsPanel';
@@ -28,6 +35,33 @@ import {
 } from '../../constants/magazine';
 
 type FormState = Omit<ContentItem, 'id' | 'createdAt' | 'updatedAt' | 'views' | 'completionRate'>;
+
+interface Revision {
+  savedAt: string;
+  title: string;
+  body: string;
+  wordCount: number;
+}
+
+function loadRevisions(id: string): Revision[] {
+  try { return JSON.parse(localStorage.getItem(`revisions-${id}`) ?? '[]'); } catch { return []; }
+}
+
+function saveRevision(id: string, title: string, body: string, wordCount: number, prev: Revision[]): Revision[] {
+  const updated = [{ savedAt: new Date().toISOString(), title, body, wordCount }, ...prev].slice(0, 5);
+  localStorage.setItem(`revisions-${id}`, JSON.stringify(updated));
+  return updated;
+}
+
+function parseBlocks(html: string): string[] {
+  if (!html || typeof DOMParser === 'undefined') return [];
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const children = Array.from(doc.body.children);
+    if (children.length === 0 && doc.body.textContent?.trim()) return [`<p>${doc.body.textContent}</p>`];
+    return children.map((el) => el.outerHTML);
+  } catch { return []; }
+}
 
 const TAG_SUGGESTIONS = [
   'science', 'nature', 'history', 'arts', 'technology', 'sports',
@@ -71,6 +105,17 @@ export default function ContentEditorPage() {
   const [showAI, setShowAI] = useState(false);
   const [showBlocks, setShowBlocks] = useState(false);
 
+  // Auto-save
+  const formRef = useRef(form);
+  formRef.current = form;
+  const lastSavedRef = useRef(JSON.stringify(form));
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [autoSaveTime, setAutoSaveTime] = useState<Date | null>(null);
+
+  // Revision history
+  const [revisions, setRevisions] = useState<Revision[]>(() => (id ? loadRevisions(id) : []));
+  const [showRevisions, setShowRevisions] = useState(false);
+
   useEffect(() => {
     if (isNew && form.title) setForm((f) => ({ ...f, slug: makeSlug(f.title) }));
   }, [form.title, isNew]);
@@ -78,6 +123,22 @@ export default function ContentEditorPage() {
   useEffect(() => {
     if (!form.seoTitle && form.title) setForm((f) => ({ ...f, seoTitle: f.title.slice(0, 60) }));
   }, [form.title, form.seoTitle]);
+
+  // Auto-save every 30 seconds for existing items
+  useEffect(() => {
+    if (isNew) return;
+    const interval = setInterval(() => {
+      const current = formRef.current;
+      if (!current.title.trim()) return;
+      const serialized = JSON.stringify(current);
+      if (serialized === lastSavedRef.current) return;
+      setAutoSaveStatus('saving');
+      updateItem(id!, { ...current });
+      lastSavedRef.current = serialized;
+      setTimeout(() => { setAutoSaveStatus('saved'); setAutoSaveTime(new Date()); }, 400);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isNew, id, updateItem]);
 
   const setField = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -127,6 +188,12 @@ export default function ContentEditorPage() {
       navigate(`/content/${item.id}/edit`, { replace: true });
     } else {
       updateItem(id!, { ...form, status });
+      lastSavedRef.current = JSON.stringify(form);
+      setAutoSaveStatus('saved');
+      setAutoSaveTime(new Date());
+      // Save revision snapshot
+      const updated = saveRevision(id!, form.title, form.body, currentWords, revisions);
+      setRevisions(updated);
       setSnackMsg(submitForReview ? 'Submitted for review!' : 'Changes saved!');
     }
     setSaving(false);
@@ -140,6 +207,18 @@ export default function ContentEditorPage() {
   const wordTarget  = READ_TIME_TARGETS.find((r) => r.value === form.readTimeTarget)?.wordTarget ?? 1000;
   const currentWords = form.body.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(Boolean).length;
   const wordProgress = Math.min(100, Math.round((currentWords / wordTarget) * 100));
+
+  const readabilityScore = useMemo(() => {
+    const text = form.body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!text || currentWords < 30) return null;
+    const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 5);
+    const avgLen = currentWords / Math.max(sentences.length, 1);
+    if (avgLen <= 14) return { label: 'Easy', color: 'success' as const, tip: `Avg ${Math.round(avgLen)} words/sentence` };
+    if (avgLen <= 20) return { label: 'Moderate', color: 'warning' as const, tip: `Avg ${Math.round(avgLen)} words/sentence` };
+    return { label: 'Complex', color: 'error' as const, tip: `Avg ${Math.round(avgLen)} words/sentence — try shorter sentences` };
+  }, [form.body, currentWords]);
+
+  const canvasBlocks = useMemo(() => parseBlocks(form.body), [form.body]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -166,6 +245,18 @@ export default function ContentEditorPage() {
             Blocks
           </Button>
         </Tooltip>
+        {!isNew && revisions.length > 0 && (
+          <Tooltip title="Revision history">
+            <Button variant="outlined" size="small" startIcon={<HistoryIcon />} onClick={() => setShowRevisions(true)}>
+              History
+            </Button>
+          </Tooltip>
+        )}
+        {!isNew && autoSaveStatus !== 'idle' && (
+          <Typography variant="caption" color={autoSaveStatus === 'saved' ? 'success.main' : 'text.secondary'} sx={{ whiteSpace: 'nowrap' }}>
+            {autoSaveStatus === 'saving' ? 'Auto-saving…' : autoSaveTime ? `Auto-saved ${autoSaveTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+          </Typography>
+        )}
         <Tooltip title="AI Writing Assistant">
           <Button variant={showAI ? 'contained' : 'outlined'} startIcon={<AutoAwesomeIcon />} onClick={() => setShowAI((v) => !v)} size="small">
             AI Assist
@@ -188,6 +279,18 @@ export default function ContentEditorPage() {
           <Box sx={{ width: `${wordProgress}%`, height: '100%', bgcolor: wordProgress >= 100 ? 'success.main' : 'primary.main', borderRadius: 2, transition: 'width 0.3s' }} />
         </Box>
         {wordProgress >= 100 && <Typography variant="caption" color="success.main" fontWeight={600}>Target reached!</Typography>}
+        {readabilityScore && (
+          <Tooltip title={readabilityScore.tip}>
+            <Chip
+              icon={<CheckCircleIcon sx={{ fontSize: '0.8rem !important' }} />}
+              label={`Readability: ${readabilityScore.label}`}
+              size="small"
+              color={readabilityScore.color}
+              variant="outlined"
+              sx={{ height: 20, fontSize: '0.65rem' }}
+            />
+          </Tooltip>
+        )}
       </Box>
 
       <Box sx={{ display: 'flex', gap: 2, flex: 1, overflow: 'hidden', minHeight: 0 }}>
@@ -580,20 +683,66 @@ export default function ContentEditorPage() {
                     </Box>
                   )}
 
-                  {/* Body content rendered */}
-                  {form.body ? (
-                    <Box
-                      dangerouslySetInnerHTML={{ __html: form.body }}
-                      sx={{
-                        '& p': { mb: 1.5, lineHeight: 1.8, fontSize: '1rem', color: '#222' },
-                        '& h1,& h2,& h3': { fontFamily: 'Georgia,serif', fontWeight: 700, mb: 1, mt: 2.5 },
-                        '& blockquote': { borderLeft: '4px solid #1565C0', pl: 2, ml: 0, fontStyle: 'italic', color: '#555' },
-                        '& img': { maxWidth: '100%', borderRadius: 1 },
-                        '& figure': { textAlign: 'center', my: 2 },
-                        '& figcaption': { fontSize: '0.8rem', color: '#888', mt: 0.5 },
-                        '& ul,& ol': { pl: 3, mb: 1.5 },
-                      }}
-                    />
+                  {/* Body content rendered as reorderable blocks */}
+                  {canvasBlocks.length > 0 ? (
+                    <Box>
+                      {canvasBlocks.map((block, i) => (
+                        <Box
+                          key={i}
+                          sx={{
+                            position: 'relative',
+                            mb: 0.5,
+                            borderRadius: 1,
+                            '&:hover': { bgcolor: '#f8f9ff' },
+                            '&:hover .block-ctrl': { opacity: 1 },
+                          }}
+                        >
+                          <Box
+                            className="block-ctrl"
+                            sx={{
+                              position: 'absolute', top: 2, right: 2, opacity: 0,
+                              transition: 'opacity 0.15s', display: 'flex', gap: 0.25,
+                              bgcolor: 'white', boxShadow: 1, borderRadius: 1, p: 0.25, zIndex: 1,
+                            }}
+                          >
+                            <Tooltip title="Move up">
+                              <span>
+                                <IconButton size="small" disabled={i === 0} onClick={() => {
+                                  const b = [...canvasBlocks]; [b[i - 1], b[i]] = [b[i], b[i - 1]];
+                                  setField('body', b.join(''));
+                                }}><KeyboardArrowUpIcon sx={{ fontSize: 14 }} /></IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Move down">
+                              <span>
+                                <IconButton size="small" disabled={i === canvasBlocks.length - 1} onClick={() => {
+                                  const b = [...canvasBlocks]; [b[i], b[i + 1]] = [b[i + 1], b[i]];
+                                  setField('body', b.join(''));
+                                }}><KeyboardArrowDownIcon sx={{ fontSize: 14 }} /></IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="Delete block">
+                              <IconButton size="small" color="error" onClick={() => {
+                                setField('body', canvasBlocks.filter((_, j) => j !== i).join(''));
+                                setSnackMsg('Block removed');
+                              }}><DeleteIcon sx={{ fontSize: 14 }} /></IconButton>
+                            </Tooltip>
+                          </Box>
+                          <Box
+                            dangerouslySetInnerHTML={{ __html: block }}
+                            sx={{
+                              '& p': { mb: 1.5, lineHeight: 1.8, fontSize: '1rem', color: '#222' },
+                              '& h1,& h2,& h3,& h4': { fontFamily: 'Georgia,serif', fontWeight: 700, mb: 1, mt: 2 },
+                              '& blockquote': { borderLeft: '4px solid #1565C0', pl: 2, ml: 0, fontStyle: 'italic', color: '#555' },
+                              '& img': { maxWidth: '100%', borderRadius: 1 },
+                              '& figure': { textAlign: 'center', my: 2 },
+                              '& figcaption': { fontSize: '0.8rem', color: '#888', mt: 0.5 },
+                              '& ul,& ol': { pl: 3, mb: 1.5 },
+                            }}
+                          />
+                        </Box>
+                      ))}
+                    </Box>
                   ) : (
                     <Box sx={{ py: 6, textAlign: 'center', color: 'text.disabled', border: '2px dashed', borderColor: 'grey.300', borderRadius: 1 }}>
                       <PreviewIcon sx={{ fontSize: 40, mb: 1 }} />
@@ -665,6 +814,56 @@ export default function ContentEditorPage() {
           </Paper>
         )}
       </Box>
+
+      {/* Revision History Dialog */}
+      <Dialog open={showRevisions} onClose={() => setShowRevisions(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <HistoryIcon color="primary" />
+            Revision History
+          </Box>
+          <IconButton size="small" onClick={() => setShowRevisions(false)}><CloseIcon fontSize="small" /></IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {revisions.length === 0 ? (
+            <Typography color="text.secondary">No saved revisions yet. Save the article to create a revision.</Typography>
+          ) : (
+            <List disablePadding>
+              {revisions.map((rev, i) => (
+                <ListItem
+                  key={i}
+                  divider
+                  secondaryAction={
+                    <Button size="small" variant="outlined" onClick={() => {
+                      setField('body', rev.body);
+                      setField('title', rev.title);
+                      setShowRevisions(false);
+                      setSnackMsg(`Restored revision from ${new Date(rev.savedAt).toLocaleTimeString()}`);
+                    }}>
+                      Restore
+                    </Button>
+                  }
+                >
+                  <ListItemText
+                    primary={<Typography variant="body2" fontWeight={600} noWrap>{rev.title}</Typography>}
+                    secondary={
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(rev.savedAt).toLocaleString()} · {rev.wordCount.toLocaleString()} words
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+          <Alert severity="info" sx={{ mt: 2 }}>Last 5 saves are kept. Restoring will overwrite the title and body — other fields are unchanged.</Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowRevisions(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar open={!!snackMsg} autoHideDuration={3000} onClose={() => setSnackMsg('')} message={snackMsg} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} />
     </Box>

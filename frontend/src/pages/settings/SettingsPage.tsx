@@ -1,12 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Box, Typography, Card, CardContent, Grid, TextField, Button,
   Switch, FormControlLabel, Divider, Alert, Tabs, Tab, Avatar,
   Select, MenuItem, FormControl, InputLabel, Chip, Snackbar,
-  InputAdornment, IconButton,
+  InputAdornment, IconButton, Paper,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import PaletteIcon from '@mui/icons-material/Palette';
+import UploadIcon from '@mui/icons-material/Upload';
+
+interface BrandKit {
+  logoUrl: string;
+  primaryColor: string;
+  accentColor: string;
+  fontFamily: string;
+  tagline: string;
+}
+
+const FONT_OPTIONS = [
+  { value: '"Georgia", serif',              label: 'Georgia (Classic Serif)' },
+  { value: '"Playfair Display", serif',     label: 'Playfair Display (Elegant)' },
+  { value: '"Roboto", sans-serif',          label: 'Roboto (Modern Sans)' },
+  { value: '"Merriweather", serif',         label: 'Merriweather (Editorial)' },
+  { value: '"Lato", sans-serif',            label: 'Lato (Clean Sans)' },
+];
+
+function loadBrandKit(): BrandKit {
+  try { return JSON.parse(localStorage.getItem('brand-kit') ?? 'null') ?? { logoUrl: '', primaryColor: '#2E7D32', accentColor: '#1565C0', fontFamily: '"Georgia", serif', tagline: '' }; }
+  catch { return { logoUrl: '', primaryColor: '#2E7D32', accentColor: '#1565C0', fontFamily: '"Georgia", serif', tagline: '' }; }
+}
 
 import { useAuthStore } from '../../stores/auth.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -21,6 +44,8 @@ export default function SettingsPage() {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [pwForm, setPwForm] = useState({ current: '', newPw: '', confirm: '' });
+  const [brandKit, setBrandKit] = useState<BrandKit>(loadBrandKit);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (user) hydrateProfile(user);
@@ -45,6 +70,7 @@ export default function SettingsPage() {
         <Tab label="Organisation" />
         <Tab label="Notifications" />
         <Tab label="Security" />
+        <Tab icon={<PaletteIcon fontSize="small" />} iconPosition="start" label="Brand Kit" />
       </Tabs>
 
       {/* ── Profile ── */}
@@ -223,6 +249,112 @@ export default function SettingsPage() {
             <Button variant="contained" color="warning" sx={{ mt: 2 }} onClick={handlePasswordChange}>Update Password</Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* ── Brand Kit ── */}
+      {tab === 4 && (
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={7}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" fontWeight={600} gutterBottom>Brand Identity</Typography>
+                <Divider sx={{ mb: 2 }} />
+
+                <Typography variant="body2" fontWeight={500} gutterBottom>Logo</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                  {brandKit.logoUrl ? (
+                    <Box component="img" src={brandKit.logoUrl} alt="Logo" sx={{ height: 56, maxWidth: 160, objectFit: 'contain', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 0.5 }} />
+                  ) : (
+                    <Box sx={{ width: 160, height: 56, border: '2px dashed', borderColor: 'divider', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Typography variant="caption" color="text.disabled">No logo</Typography>
+                    </Box>
+                  )}
+                  <Button variant="outlined" size="small" startIcon={<UploadIcon />} onClick={() => logoInputRef.current?.click()}>
+                    Upload Logo
+                  </Button>
+                  {brandKit.logoUrl && (
+                    <Button size="small" color="error" onClick={() => setBrandKit((b) => ({ ...b, logoUrl: '' }))}>Remove</Button>
+                  )}
+                  <input ref={logoInputRef} type="file" hidden accept="image/*" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setBrandKit((b) => ({ ...b, logoUrl: URL.createObjectURL(file) }));
+                  }} />
+                </Box>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" fontWeight={500} gutterBottom>Primary Colour</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box component="input" type="color" value={brandKit.primaryColor} onChange={(e) => setBrandKit((b) => ({ ...b, primaryColor: e.target.value }))} sx={{ width: 48, height: 40, border: 'none', cursor: 'pointer', borderRadius: 1 }} />
+                      <TextField size="small" value={brandKit.primaryColor} onChange={(e) => setBrandKit((b) => ({ ...b, primaryColor: e.target.value }))} sx={{ width: 120 }} inputProps={{ pattern: '#[0-9a-fA-F]{6}' }} />
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body2" fontWeight={500} gutterBottom>Accent Colour</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                      <Box component="input" type="color" value={brandKit.accentColor} onChange={(e) => setBrandKit((b) => ({ ...b, accentColor: e.target.value }))} sx={{ width: 48, height: 40, border: 'none', cursor: 'pointer', borderRadius: 1 }} />
+                      <TextField size="small" value={brandKit.accentColor} onChange={(e) => setBrandKit((b) => ({ ...b, accentColor: e.target.value }))} sx={{ width: 120 }} inputProps={{ pattern: '#[0-9a-fA-F]{6}' }} />
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <InputLabel>Brand Font</InputLabel>
+                      <Select value={brandKit.fontFamily} label="Brand Font" onChange={(e) => setBrandKit((b) => ({ ...b, fontFamily: e.target.value }))}>
+                        {FONT_OPTIONS.map((f) => <MenuItem key={f.value} value={f.value} sx={{ fontFamily: f.value }}>{f.label}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField label="Brand Tagline" fullWidth value={brandKit.tagline} onChange={(e) => setBrandKit((b) => ({ ...b, tagline: e.target.value }))} placeholder="e.g. Inspiring Young Minds Through Stories" helperText="Shown in footers and social previews" />
+                  </Grid>
+                </Grid>
+                <Button variant="contained" sx={{ mt: 2 }} startIcon={<PaletteIcon />} onClick={() => { localStorage.setItem('brand-kit', JSON.stringify(brandKit)); save('Brand kit saved.'); }}>
+                  Save Brand Kit
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Live preview */}
+          <Grid item xs={12} md={5}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" fontWeight={600} gutterBottom>Live Preview</Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Paper variant="outlined" sx={{ p: 2.5, bgcolor: '#fafafa' }}>
+                  {/* Magazine header mockup */}
+                  <Box sx={{ borderBottom: `3px solid ${brandKit.primaryColor}`, pb: 1.5, mb: 2 }}>
+                    {brandKit.logoUrl ? (
+                      <Box component="img" src={brandKit.logoUrl} alt="Logo preview" sx={{ height: 36, maxWidth: '100%', objectFit: 'contain' }} />
+                    ) : (
+                      <Typography sx={{ fontFamily: brandKit.fontFamily, fontWeight: 700, fontSize: '1.4rem', color: brandKit.primaryColor }}>
+                        {org.name || 'Magazine CMS'}
+                      </Typography>
+                    )}
+                    {brandKit.tagline && (
+                      <Typography variant="caption" color="text.secondary" display="block">{brandKit.tagline}</Typography>
+                    )}
+                  </Box>
+                  <Typography sx={{ fontFamily: brandKit.fontFamily, fontSize: '1.1rem', fontWeight: 700, mb: 0.75 }}>
+                    Sample Article Headline
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ fontFamily: brandKit.fontFamily, mb: 1 }}>
+                    A compelling subtitle that draws readers into the story and sets the tone for what follows.
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.75, mt: 1.5 }}>
+                    <Chip label="Science" size="small" sx={{ bgcolor: brandKit.primaryColor, color: 'white', height: 20, fontSize: '0.65rem' }} />
+                    <Chip label="Featured" size="small" sx={{ bgcolor: brandKit.accentColor, color: 'white', height: 20, fontSize: '0.65rem' }} />
+                  </Box>
+                  <Box sx={{ mt: 2, pt: 1.5, borderTop: `1px solid ${brandKit.primaryColor}33` }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontFamily: brandKit.fontFamily }}>
+                      {brandKit.tagline || '© Magazine CMS'}
+                    </Typography>
+                  </Box>
+                </Paper>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       )}
 
       <Snackbar open={!!snack} autoHideDuration={3000} onClose={() => setSnack('')} message={snack} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} />

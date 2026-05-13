@@ -1,10 +1,11 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   Box, Typography, Grid, Card, CardMedia, CardContent, CardActions,
   Button, IconButton, Chip, TextField, InputAdornment, ToggleButton,
   ToggleButtonGroup, Tooltip, Dialog, DialogTitle, DialogContent,
   DialogActions, Alert, Tabs, Tab, Select, MenuItem, FormControl,
-  InputLabel, Slider, Divider,
+  InputLabel, Divider, Paper, List, ListItem, ListItemText,
+  ListItemIcon, Snackbar,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import GridViewIcon from '@mui/icons-material/GridView';
@@ -16,6 +17,9 @@ import ImageIcon from '@mui/icons-material/Image';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import FolderIcon from '@mui/icons-material/Folder';
+import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
+import CropIcon from '@mui/icons-material/Crop';
 
 import { useMediaStore, formatSize } from '../../stores/media.store';
 import AITextField from '../../components/ai/AITextField';
@@ -156,6 +160,91 @@ function parseVideoUrl(url: string): { platform: 'youtube' | 'vimeo' | null; id:
     return { platform: 'vimeo', id, embedUrl: `https://player.vimeo.com/video/${id}`, thumbUrl: '' };
   }
   return { platform: null, id: '', embedUrl: '', thumbUrl: '' };
+}
+
+// ── Folder types ─────────────────────────────────────────────────────────────
+interface MediaFolder { id: string; name: string; createdAt: string; }
+
+function loadFolders(): MediaFolder[] {
+  try { return JSON.parse(localStorage.getItem('media-folders') ?? 'null') ?? [
+    { id: 'f1', name: 'Cover Images',   createdAt: '2025-01-10' },
+    { id: 'f2', name: 'Article Photos', createdAt: '2025-01-12' },
+    { id: 'f3', name: 'Infographics',   createdAt: '2025-02-01' },
+  ]; } catch { return []; }
+}
+
+// ── Image Crop Dialog ─────────────────────────────────────────────────────────
+function ImageCropDialog({ asset, onClose, onSave }: {
+  asset: { url: string; filename: string; altText: string } | null;
+  onClose: () => void;
+  onSave: (url: string, filename: string) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [scale, setScale] = useState(100);
+  const [offsetX, setOffsetX] = useState(0);
+  const [offsetY, setOffsetY] = useState(0);
+
+  useEffect(() => {
+    if (!asset?.url || !canvasRef.current) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = canvasRef.current!;
+      const maxW = 360; const maxH = 240;
+      const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+      canvas.width = img.width * ratio * (scale / 100);
+      canvas.height = img.height * ratio * (scale / 100);
+      const ctx = canvas.getContext('2d')!;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, offsetX, offsetY, img.width * (scale / 100) - offsetX, img.height * (scale / 100) - offsetY, 0, 0, canvas.width, canvas.height);
+    };
+    img.src = asset.url;
+  }, [asset, scale, offsetX, offsetY]);
+
+  const handleSave = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !asset) return;
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      onSave(url, `cropped-${asset.filename}`);
+    }, 'image/jpeg', 0.92);
+  };
+
+  if (!asset) return null;
+  return (
+    <Dialog open={!!asset} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <CropIcon color="primary" /> Crop &amp; Resize Image
+      </DialogTitle>
+      <DialogContent>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', border: '1px solid', borderColor: 'divider', borderRadius: 1, bgcolor: 'grey.100', p: 1, minHeight: 200, alignItems: 'center' }}>
+            <canvas ref={canvasRef} style={{ maxWidth: '100%', display: 'block', borderRadius: 4 }} />
+          </Box>
+          <Box>
+            <Typography variant="body2" gutterBottom>Scale: {scale}%</Typography>
+            <Box component="input" type="range" min={10} max={200} value={scale} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setScale(Number(e.target.value))} style={{ width: '100%' }} />
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" gutterBottom>Pan X: {offsetX}px</Typography>
+              <Box component="input" type="range" min={-200} max={200} value={offsetX} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOffsetX(Number(e.target.value))} style={{ width: '100%' }} />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" gutterBottom>Pan Y: {offsetY}px</Typography>
+              <Box component="input" type="range" min={-200} max={200} value={offsetY} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOffsetY(Number(e.target.value))} style={{ width: '100%' }} />
+            </Box>
+          </Box>
+          <Alert severity="info" sx={{ fontSize: '0.78rem' }}>Editing creates a new asset — the original is preserved.</Alert>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" startIcon={<CropIcon />} onClick={handleSave}>Save as New Asset</Button>
+      </DialogActions>
+    </Dialog>
+  );
 }
 
 // ── Create Image Dialog ───────────────────────────────────────────────────────
@@ -421,6 +510,12 @@ export default function MediaManagerPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
   const [filterTab, setFilterTab] = useState(0);
+  const [pageTab, setPageTab] = useState(0);
+  const [cropAsset, setCropAsset] = useState<{ url: string; filename: string; altText: string } | null>(null);
+  const [folders, setFolders] = useState<MediaFolder[]>(loadFolders);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [snack, setSnack] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const totalSize = useMediaStore((s) => s.assets.reduce((sum, a) => sum + a.size, 0));
@@ -430,6 +525,26 @@ export default function MediaManagerPage() {
     if (filterTab === 2) return a.mimeType.startsWith('video/');
     return true;
   });
+
+  const persistFolders = (updated: MediaFolder[]) => {
+    setFolders(updated);
+    localStorage.setItem('media-folders', JSON.stringify(updated));
+  };
+
+  const handleAddFolder = () => {
+    if (!newFolderName.trim()) return;
+    const folder: MediaFolder = { id: Date.now().toString(), name: newFolderName.trim(), createdAt: new Date().toISOString().split('T')[0] };
+    persistFolders([...folders, folder]);
+    setNewFolderName('');
+    setFolderDialogOpen(false);
+    setSnack(`Folder "${folder.name}" created.`);
+  };
+
+  const handleCropSave = (url: string, filename: string) => {
+    addAsset({ filename, mimeType: 'image/jpeg', size: 0, url, altText: `Cropped: ${filename}`, caption: '', usageCount: 0, uploadedBy: 'Studio' });
+    setCropAsset(null);
+    setSnack('Cropped image saved as new asset.');
+  };
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
@@ -474,7 +589,53 @@ export default function MediaManagerPage() {
         </Box>
       </Box>
 
-      {/* Filter tabs + search */}
+      {/* Page-level tabs */}
+      <Tabs value={pageTab} onChange={(_, v) => setPageTab(v)} sx={{ mb: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Tab icon={<ImageIcon fontSize="small" />} iconPosition="start" label="All Media" />
+        <Tab icon={<FolderIcon fontSize="small" />} iconPosition="start" label={`Folders (${folders.length})`} />
+      </Tabs>
+
+      {/* Folders view */}
+      {pageTab === 1 && (
+        <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+            <Button variant="outlined" startIcon={<CreateNewFolderIcon />} onClick={() => setFolderDialogOpen(true)}>New Folder</Button>
+          </Box>
+          <Grid container spacing={2}>
+            {folders.map((folder) => (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={folder.id}>
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 2.5, display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' }, borderRadius: 2 }}
+                  onClick={() => { setPageTab(0); setSnack(`Showing assets in "${folder.name}"`); }}
+                >
+                  <FolderIcon sx={{ fontSize: 40, color: 'warning.main' }} />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" fontWeight={600} noWrap>{folder.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">Created {folder.createdAt}</Typography>
+                  </Box>
+                  <Tooltip title="Delete folder">
+                    <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); persistFolders(folders.filter((f) => f.id !== folder.id)); setSnack(`Folder "${folder.name}" deleted.`); }}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Paper>
+              </Grid>
+            ))}
+            {folders.length === 0 && (
+              <Grid item xs={12}>
+                <Box sx={{ py: 4, textAlign: 'center', color: 'text.disabled' }}>
+                  <FolderIcon sx={{ fontSize: 48, mb: 1 }} />
+                  <Typography>No folders yet. Create one to organise your assets.</Typography>
+                </Box>
+              </Grid>
+            )}
+          </Grid>
+        </Box>
+      )}
+
+      {/* Filter tabs + search + asset grid (only in media tab) */}
+      {pageTab === 0 && (<>
       <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
         <Tabs value={filterTab} onChange={(_, v) => setFilterTab(v)} sx={{ minHeight: 36 }}>
           <Tab label="All" sx={{ minHeight: 36, py: 0 }} />
@@ -532,9 +693,14 @@ export default function MediaManagerPage() {
                 </CardContent>
                 <CardActions>
                   {asset.url && asset.mimeType !== 'video/embed' && (
-                    <Tooltip title="Download">
-                      <IconButton size="small" component="a" href={asset.url} download={asset.filename}><DownloadIcon fontSize="small" /></IconButton>
-                    </Tooltip>
+                    <>
+                      <Tooltip title="Download">
+                        <IconButton size="small" component="a" href={asset.url} download={asset.filename}><DownloadIcon fontSize="small" /></IconButton>
+                      </Tooltip>
+                      <Tooltip title="Crop / Resize">
+                        <IconButton size="small" color="primary" onClick={() => setCropAsset({ url: asset.url, filename: asset.filename, altText: asset.altText })}><CropIcon fontSize="small" /></IconButton>
+                      </Tooltip>
+                    </>
                   )}
                   {asset.mimeType === 'video/embed' && (
                     <Tooltip title="Open embed URL">
@@ -580,6 +746,7 @@ export default function MediaManagerPage() {
           ))}
         </Card>
       )}
+      </>)}
 
       {/* Upload dialog */}
       <Dialog open={uploadOpen} onClose={() => setUploadOpen(false)} maxWidth="sm" fullWidth>
@@ -603,8 +770,27 @@ export default function MediaManagerPage() {
         </DialogActions>
       </Dialog>
 
+      {/* New Folder dialog */}
+      <Dialog open={folderDialogOpen} onClose={() => setFolderDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>New Folder</DialogTitle>
+        <DialogContent sx={{ pt: '16px !important' }}>
+          <TextField
+            label="Folder Name" fullWidth autoFocus
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAddFolder(); }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFolderDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleAddFolder} disabled={!newFolderName.trim()}>Create</Button>
+        </DialogActions>
+      </Dialog>
+
       <CreateImageDialog open={createOpen} onClose={() => setCreateOpen(false)} />
       <AddVideoDialog open={videoOpen} onClose={() => setVideoOpen(false)} />
+      <ImageCropDialog asset={cropAsset} onClose={() => setCropAsset(null)} onSave={handleCropSave} />
+      <Snackbar open={!!snack} autoHideDuration={3000} onClose={() => setSnack('')} message={snack} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} />
     </Box>
   );
 }

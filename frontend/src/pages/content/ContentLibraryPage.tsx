@@ -13,8 +13,27 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearIcon from '@mui/icons-material/Clear';
 
-import { useContentStore } from '../../stores/content.store';
+import { useContentStore, type ContentItem } from '../../stores/content.store';
 import { CONTENT_TYPES, CONTENT_STATUSES, CATEGORIES, STATUS_COLOR_MAP } from '../../constants/magazine';
+
+function computeHealthScore(item: ContentItem): number {
+  let score = 0;
+  if (item.title?.length >= 20) score += 20; else if (item.title?.length > 5) score += 10;
+  if (item.subtitle) score += 10;
+  if (item.wordCount >= 600) score += 25; else if (item.wordCount >= 200) score += 15; else if (item.wordCount > 0) score += 5;
+  if (item.seoTitle) score += 10;
+  if (item.seoDescription) score += 10;
+  if (item.focusKeyword) score += 5;
+  if (item.tags?.length >= 3) score += 10; else if (item.tags?.length > 0) score += 5;
+  if (item.body?.includes('<img') || item.body?.includes('<figure')) score += 10;
+  return Math.min(score, 100);
+}
+
+function healthColor(score: number): 'error' | 'warning' | 'success' {
+  if (score >= 75) return 'success';
+  if (score >= 45) return 'warning';
+  return 'error';
+}
 
 export default function ContentLibraryPage() {
   const navigate = useNavigate();
@@ -99,6 +118,7 @@ export default function ContentLibraryPage() {
               <TableCell>Status</TableCell>
               <TableCell>Author</TableCell>
               <TableCell>Words</TableCell>
+              <TableCell>Health</TableCell>
               <TableCell>Updated</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
@@ -106,7 +126,7 @@ export default function ContentLibraryPage() {
           <TableBody>
             {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} align="center" sx={{ py: 5 }}>
+                <TableCell colSpan={9} align="center" sx={{ py: 5 }}>
                   <Typography color="text.secondary">No content matches your filters.</Typography>
                   {hasActiveFilter && <Button onClick={clearFilter} sx={{ mt: 1 }}>Clear filters</Button>}
                 </TableCell>
@@ -131,6 +151,16 @@ export default function ContentLibraryPage() {
                 </TableCell>
                 <TableCell><Typography variant="caption">{item.author}</Typography></TableCell>
                 <TableCell><Typography variant="caption">{item.wordCount.toLocaleString()}</Typography></TableCell>
+                <TableCell>
+                  {(() => {
+                    const score = computeHealthScore(item);
+                    return (
+                      <Tooltip title={`Content health: ${score}/100`}>
+                        <Chip label={`${score}%`} size="small" color={healthColor(score)} variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
+                      </Tooltip>
+                    );
+                  })()}
+                </TableCell>
                 <TableCell><Typography variant="caption">{new Date(item.updatedAt).toLocaleDateString()}</Typography></TableCell>
                 <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                   <Tooltip title="Edit">
