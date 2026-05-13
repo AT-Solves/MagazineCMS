@@ -5,8 +5,6 @@ import { ContentItem, ContentStatus, ContentType } from '../../entities/content-
 import { ContentRevision } from '../../entities/content-revision.entity';
 import { WorkflowState } from '../../entities/workflow-state.entity';
 import { ContentModeration } from '../../entities/content-moderation.entity';
-import { User } from '../../entities/user.entity';
-
 @Injectable()
 export class ContentService {
   constructor(

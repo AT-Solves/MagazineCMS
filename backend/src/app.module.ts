@@ -8,6 +8,7 @@ import { PassportModule } from '@nestjs/passport';
 import * as path from 'path';
 
 // Import modules
+import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { ContentModule } from './content/content.module';
 import { MediaModule } from './media/media.module';
@@ -116,6 +117,7 @@ import { AuditLog } from './entities/audit-log.entity';
     }),
 
     // Feature modules
+    HealthModule,
     AuthModule,
     ContentModule,
     MediaModule,

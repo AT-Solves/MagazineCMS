@@ -267,7 +267,7 @@ export class SeoMetadata {
   @Column('uuid', { unique: true })
   contentId: string;
 
-  @ManyToOne(() => ContentItem, (content) => { }, { onDelete: 'CASCADE' })
+  @ManyToOne(() => ContentItem, (_content) => { }, { onDelete: 'CASCADE' })
   content: ContentItem;
 
   @Field({ nullable: true })

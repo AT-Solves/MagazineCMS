@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Build output
+frontend/dist/
+backend/dist/
+
+# Environment files (contain secrets — scope to root and backend only)
+/.env
+/.env.local
+/.env.production
+/backend/.env
+/backend/.env.local
+# frontend/.env is intentionally committed — contains only non-secret demo config (VITE_DEMO_MODE=true)
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Lock files (keep package-lock for reproducibility, but not both)
+yarn.lock
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+.vscode/launch.json
+
+# Claude internal
+.claude/
+
+# Test coverage
+coverage/
+frontend/coverage/
+backend/coverage/
+
+# TypeScript build info
+*.tsbuildinfo
