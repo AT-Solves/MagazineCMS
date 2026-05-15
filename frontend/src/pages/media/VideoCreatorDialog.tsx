@@ -4,7 +4,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Alert, Stepper,
   Step, StepLabel, Card, CardContent, Divider, Avatar, Tooltip,
   CircularProgress, Paper, FormControl, InputLabel, Select, MenuItem,
-  Collapse,
+  Collapse, Slider,
 } from '@mui/material';
 import MovieIcon from '@mui/icons-material/Movie';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -17,6 +17,11 @@ import PersonIcon from '@mui/icons-material/Person';
 import CloseIcon from '@mui/icons-material/Close';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import StopIcon from '@mui/icons-material/Stop';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import TuneIcon from '@mui/icons-material/Tune';
+import BoltIcon from '@mui/icons-material/Bolt';
 
 import { useMediaStore } from '../../stores/media.store';
 import {
@@ -69,6 +74,32 @@ const ROLE_EMOJIS: Record<CharacterRole, string> = {
 
 const CHAR_COLORS = ['#2E7D32','#1565C0','#E65100','#6A1B9A','#00838F','#AD1457','#37474F','#C62828','#F57F17','#00695C'];
 
+// ── Prompt parser ─────────────────────────────────────────────────────────────
+function parseVideoPrompt(text: string): { genre: string; style: ProductionStyleValue; premise: string } {
+  const p = text.toLowerCase();
+
+  let genre = 'adventure';
+  if (/learn|teach|explain|educat|science|histor|how to|discover|fact/.test(p)) genre = 'educational';
+  else if (/mystery|detect|clue|investig|secret|hidden|whodunit|crime/.test(p)) genre = 'mystery';
+  else if (/magic|fantasy|dragon|wizard|elf|enchant|spell|mythic|fairy/.test(p)) genre = 'fantasy';
+  else if (/space|robot|future|sci.?fi|alien|technolog|cyber|galax/.test(p)) genre = 'sci_fi';
+  else if (/funny|humor|comedy|laugh|joke|silly|absurd|mishap|chaos/.test(p)) genre = 'comedy';
+
+  let style: ProductionStyleValue = 'animated';
+  if (/\bcartoon\b|looney|slapstick|toon/.test(p)) style = 'cartoon';
+  else if (/manga|anime|japanese|ink panel/.test(p)) style = 'manga';
+  else if (/cinematic|film noir|dramatic|dark film|moody|thriller/.test(p)) style = 'cinematic';
+  else if (/whiteboard|explainer|tutorial|diagram|sketch/.test(p)) style = 'whiteboard';
+  else if (/\b3[- ]?d\b|cgi|photorealistic|render/.test(p)) style = 'cgi';
+  else if (/watercolou?r|painted|soft|pastel|wash/.test(p)) style = 'watercolor';
+  else if (/stop.?motion|claymation|craft|paper.?cut/.test(p)) style = 'stop_motion';
+  else if (/live.?action|real.?world|documentary/.test(p)) style = 'live_action';
+  else if (genre === 'educational') style = 'whiteboard';
+  else if (genre === 'fantasy') style = 'watercolor';
+
+  return { genre, style, premise: text };
+}
+
 // ── Canvas renderer per style ─────────────────────────────────────────────────
 function renderSceneCanvas(
   canvas: HTMLCanvasElement,
@@ -90,21 +121,15 @@ function renderSceneCanvas(
 
   const charX = (i: number, total: number) => W * (0.5 - (total - 1) * 0.15 + i * 0.3);
 
-  // ── Backgrounds per style ──────────────────────────────────────────────────
-
   if (style === 'animated' || style === 'cartoon') {
-    // Sky gradient
     const sky = ctx.createLinearGradient(0, 0, 0, H);
     sky.addColorStop(0, style === 'animated' ? '#42A5F5' : '#80DEEA');
     sky.addColorStop(0.62, style === 'animated' ? '#B3E5FC' : '#E0F7FA');
     sky.addColorStop(0.62, '#66BB6A');
     sky.addColorStop(1, '#388E3C');
     ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-
-    // Sun
     ctx.fillStyle = '#FFD54F';
     ctx.beginPath(); ctx.arc(W * 0.82, H * 0.16, H * 0.11, 0, Math.PI * 2); ctx.fill();
-    // Sun rays
     ctx.strokeStyle = '#FFCC02'; ctx.lineWidth = 2;
     for (let a = 0; a < Math.PI * 2; a += Math.PI / 5) {
       ctx.beginPath();
@@ -112,23 +137,18 @@ function renderSceneCanvas(
       ctx.lineTo(W*0.82 + Math.cos(a)*H*0.19, H*0.16 + Math.sin(a)*H*0.19);
       ctx.stroke();
     }
-    // Cloud
     ctx.fillStyle = 'rgba(255,255,255,0.92)';
     [[W*0.22, H*0.14, H*0.08], [W*0.28, H*0.10, H*0.07], [W*0.15, H*0.12, H*0.06]].forEach(([x, y, r]) => {
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     });
-    // Bold cartoon border
     ctx.strokeStyle = '#000'; ctx.lineWidth = style === 'animated' ? 3 : 2;
     ctx.strokeRect(2, 2, W - 4, H - 4);
-    // Characters
     const shown = cast.slice(0, 4);
     shown.forEach((ch, i) => {
-      const x = charX(i, shown.length);
-      const y = H * 0.64;
+      const x = charX(i, shown.length), y = H * 0.64;
       ctx.fillStyle = ch.color;
       ctx.beginPath(); ctx.arc(x, y, H * 0.13, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
-      ctx.stroke();
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke();
       drawEmoji(ch.emoji, x, y, H * 0.18);
     });
 
@@ -136,13 +156,11 @@ function renderSceneCanvas(
     const bg = ctx.createLinearGradient(0, 0, W, H);
     bg.addColorStop(0, '#06001a'); bg.addColorStop(1, '#001030');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-    // Stars
     for (let i = 0; i < 120; i++) {
       const x = Math.random() * W, y = Math.random() * H * 0.6, a = Math.random();
       ctx.fillStyle = `rgba(255,255,255,${a * 0.8})`;
       ctx.fillRect(x, y, a > 0.95 ? 2 : 1, a > 0.95 ? 2 : 1);
     }
-    // Grid floor
     ctx.strokeStyle = 'rgba(80,40,200,0.22)'; ctx.lineWidth = 0.5;
     const vp = { x: W / 2, y: H * 0.55 };
     for (let i = 0; i <= 12; i++) {
@@ -154,7 +172,6 @@ function renderSceneCanvas(
       ctx.moveTo(0, vp.y + (H - vp.y) * t); ctx.lineTo(W, vp.y + (H - vp.y) * t);
       ctx.stroke();
     }
-    // Glowing orbs for characters
     const shown = cast.slice(0, 4);
     shown.forEach((ch, i) => {
       const x = charX(i, shown.length), y = H * 0.58;
@@ -168,11 +185,9 @@ function renderSceneCanvas(
     const bg = ctx.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, '#100800'); bg.addColorStop(0.5, '#1a1008'); bg.addColorStop(1, '#00080a');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-    // Warm light shaft
     const shaft = ctx.createLinearGradient(W * 0.25, 0, W * 0.75, H);
     shaft.addColorStop(0, 'rgba(255,160,40,0.10)'); shaft.addColorStop(1, 'rgba(255,160,40,0)');
     ctx.fillStyle = shaft; ctx.fillRect(0, 0, W, H);
-    // Film grain (imageData method — fast)
     const gd = ctx.getImageData(0, 0, W, H);
     for (let i = 0; i < gd.data.length; i += 16) {
       const n = (Math.random() - 0.5) * 25;
@@ -180,10 +195,8 @@ function renderSceneCanvas(
       gd.data[i+3] = 18;
     }
     ctx.putImageData(gd, 0, 0);
-    // Letterbox
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, H * 0.13); ctx.fillRect(0, H * 0.87, W, H * 0.13);
-    // Character silhouettes
     const shown = cast.slice(0, 3);
     shown.forEach((ch, i) => {
       const x = charX(i, shown.length), hy = H * 0.56;
@@ -197,28 +210,22 @@ function renderSceneCanvas(
 
   } else if (style === 'whiteboard') {
     ctx.fillStyle = '#FAFAFA'; ctx.fillRect(0, 0, W, H);
-    // Ruled lines
     ctx.strokeStyle = 'rgba(0,0,0,0.05)'; ctx.lineWidth = 0.5;
     for (let y = H * 0.06; y < H; y += H * 0.09) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     }
-    // Border
     ctx.strokeStyle = '#444'; ctx.lineWidth = 1.5;
     ctx.setLineDash([6, 3]); ctx.strokeRect(8, 8, W - 16, H - 16); ctx.setLineDash([]);
-    // Marker sketch — diagram circle on right
     ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(W * 0.75, H * 0.5, H * 0.23, 0, Math.PI * 2); ctx.stroke();
-    // Lines
     for (let i = 0; i < 5; i++) {
       const y = H * (0.22 + i * 0.13);
       ctx.beginPath(); ctx.moveTo(W * 0.07, y); ctx.lineTo(W * (0.3 + Math.random() * 0.2), y); ctx.stroke();
     }
-    // Arrow
     ctx.beginPath();
     ctx.moveTo(W * 0.47, H * 0.5); ctx.lineTo(W * 0.51, H * 0.5);
     ctx.moveTo(W * 0.49, H * 0.46); ctx.lineTo(W * 0.51, H * 0.5); ctx.lineTo(W * 0.49, H * 0.54);
     ctx.stroke();
-    // Stick-figure characters
     const shown = cast.slice(0, 3);
     shown.forEach((ch, i) => {
       const x = W * (0.14 + i * 0.13), y = H * 0.8;
@@ -232,12 +239,10 @@ function renderSceneCanvas(
 
   } else if (style === 'manga') {
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
-    // Halftone bg
     ctx.fillStyle = 'rgba(0,0,0,0.04)';
     for (let x = 0; x < W; x += 7) for (let y = 0; y < H; y += 7) {
       ctx.beginPath(); ctx.arc(x + 3, y + 3, 1.2, 0, Math.PI * 2); ctx.fill();
     }
-    // Speed lines
     ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 0.8;
     const fc = { x: W * 0.32, y: H * 0.44 };
     for (let a = 0; a < Math.PI * 2; a += 0.045) {
@@ -246,19 +251,15 @@ function renderSceneCanvas(
       ctx.lineTo(fc.x + Math.cos(a) * W, fc.y + Math.sin(a) * H);
       ctx.stroke();
     }
-    // White main panel over lines
     ctx.fillStyle = '#fff'; ctx.fillRect(W * 0.04, H * 0.06, W * 0.58, H * 0.78);
-    // Panel borders
     ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
     ctx.strokeRect(W * 0.04, H * 0.06, W * 0.58, H * 0.78);
     ctx.lineWidth = 2;
     ctx.strokeRect(W * 0.65, H * 0.06, W * 0.3, H * 0.38);
     ctx.strokeRect(W * 0.65, H * 0.48, W * 0.3, H * 0.36);
     ctx.lineWidth = 3; ctx.strokeRect(2, 2, W - 4, H - 4);
-    // Main character
     if (cast[0]) {
       drawEmoji(cast[0].emoji, W * 0.31, H * 0.47, H * 0.42);
-      // Action burst lines
       ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1.5;
       for (let a = 0; a < Math.PI * 2; a += 0.28) {
         ctx.beginPath();
@@ -273,17 +274,14 @@ function renderSceneCanvas(
     const bg = ctx.createLinearGradient(0, 0, W, H);
     bg.addColorStop(0, '#03060a'); bg.addColorStop(0.5, '#071825'); bg.addColorStop(1, '#000');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-    // Atmospheric haze
     const haze = ctx.createRadialGradient(W*0.5, H*0.65, 0, W*0.5, H*0.65, W*0.55);
     haze.addColorStop(0, 'rgba(30,70,120,0.28)'); haze.addColorStop(1, 'transparent');
     ctx.fillStyle = haze; ctx.fillRect(0, 0, W, H);
-    // Lens flare streak
     const flare = ctx.createLinearGradient(0, H * 0.32, W, H * 0.32);
     flare.addColorStop(0, 'transparent'); flare.addColorStop(0.45, 'rgba(120,180,255,0.07)');
     flare.addColorStop(0.5, 'rgba(180,220,255,0.14)');
     flare.addColorStop(0.55, 'rgba(120,180,255,0.07)'); flare.addColorStop(1, 'transparent');
     ctx.fillStyle = flare; ctx.fillRect(0, H * 0.30, W, H * 0.05);
-    // Character glows + emojis
     const shown = cast.slice(0, 3);
     shown.forEach((ch, i) => {
       const x = charX(i, shown.length), y = H * 0.75;
@@ -292,7 +290,6 @@ function renderSceneCanvas(
       ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H);
       drawEmoji(ch.emoji, x, y, H * 0.28);
     });
-    // Letterbox
     const lb = H * 0.14;
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, W, lb); ctx.fillRect(0, H - lb, W, lb);
@@ -310,10 +307,8 @@ function renderSceneCanvas(
       g.addColorStop(0, c); g.addColorStop(1, 'transparent');
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     });
-    // Soft border
     ctx.strokeStyle = 'rgba(110,70,50,0.3)'; ctx.lineWidth = 3.5;
     ctx.beginPath(); ctx.roundRect(5, 5, W - 10, H - 10, 6); ctx.stroke();
-    // Characters with colour blobs
     const shown = cast.slice(0, 4);
     shown.forEach((ch, i) => {
       const x = charX(i, shown.length), y = H * 0.62;
@@ -323,21 +318,18 @@ function renderSceneCanvas(
       drawEmoji(ch.emoji, x, y, H * 0.26);
     });
 
-  } else { // stop_motion + fallback
+  } else {
     const bg = ctx.createLinearGradient(0, 0, W, H);
     bg.addColorStop(0, '#eadcc8'); bg.addColorStop(1, '#c9a87c');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-    // Paper grain
     const gd = ctx.getImageData(0, 0, W, H);
     for (let i = 0; i < gd.data.length; i += 8) {
       const n = (Math.random() - 0.5) * 18;
       gd.data[i+3] = Math.max(0, Math.min(40, n + 20));
     }
     ctx.putImageData(gd, 0, 0);
-    // Stitched border
     ctx.strokeStyle = '#7B5230'; ctx.lineWidth = 2.5;
     ctx.setLineDash([5, 4]); ctx.strokeRect(7, 7, W - 14, H - 14); ctx.setLineDash([]);
-    // Paper-cutout characters
     const shown = cast.slice(0, 3);
     shown.forEach((ch, i) => {
       const x = charX(i, shown.length), y = H * 0.59;
@@ -349,11 +341,10 @@ function renderSceneCanvas(
     });
   }
 
-  // ── Overlay: scene label & title ───────────────────────────────────────────
+  // Overlay: scene label & title
   const dark = ['cgi', 'live_action', 'cinematic'].includes(style);
   const tc = dark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.75)';
   const bc = dark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)';
-
   if (sceneNum > 0) {
     ctx.fillStyle = bc;
     ctx.fillRect(6, H - 24, 72, 20);
@@ -367,6 +358,33 @@ function renderSceneCanvas(
     ctx.fillStyle = tc; ctx.textAlign = 'right';
     ctx.fillText(short, W - 8, H - 14);
   }
+}
+
+// ── Audio waveform ────────────────────────────────────────────────────────────
+function AudioWave({ active, color = 'secondary.main' }: { active: boolean; color?: string }) {
+  const heights = [0.4, 0.65, 1, 0.65, 0.4];
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: '2px', height: 18, width: 28 }}>
+      {heights.map((h, i) => (
+        <Box
+          key={i}
+          sx={{
+            width: 3,
+            height: active ? `${h * 100}%` : '25%',
+            bgcolor: color,
+            borderRadius: 0.5,
+            transition: 'height 0.1s ease',
+            '@keyframes wavebar': {
+              '0%, 100%': { transform: 'scaleY(0.4)' },
+              '50%':       { transform: 'scaleY(1)' },
+            },
+            animation: active ? `wavebar ${0.45 + i * 0.08}s ease-in-out infinite` : 'none',
+            transformOrigin: 'center',
+          }}
+        />
+      ))}
+    </Box>
+  );
 }
 
 // ── Custom character form ─────────────────────────────────────────────────────
@@ -423,55 +441,99 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
   const [genre,    setGenre]    = useState('adventure');
   const [duration, setDuration] = useState(5);
 
+  // Prompt (top-level quick input)
+  const [promptText,    setPromptText]    = useState('');
+  const [promptApplied, setPromptApplied] = useState(false);
+  const [showAudioOpts, setShowAudioOpts] = useState(false);
+
   // Cast
   const [cast, setCast] = useState<VideoCharacter[]>([CHARACTER_PRESETS[0], CHARACTER_PRESETS[1]]);
   const [showCustomForm, setShowCustomForm] = useState(false);
 
   // Story
-  const [premise,         setPremise]         = useState('');
-  const [story,           setStory]           = useState<VideoStory | null>(null);
-  const [generating,      setGenerating]      = useState(false);
-  const [activeScene,     setActiveScene]      = useState(0);
-  const [showFullScript,  setShowFullScript]  = useState(false);
+  const [premise,        setPremise]        = useState('');
+  const [story,          setStory]          = useState<VideoStory | null>(null);
+  const [generating,     setGenerating]     = useState(false);
+  const [activeScene,    setActiveScene]    = useState(0);
+  const [showFullScript, setShowFullScript] = useState(false);
+
+  // Audio
+  const utteranceRef   = useRef<SpeechSynthesisUtterance | null>(null);
+  const [speaking,      setSpeaking]      = useState(false);
+  const [speakingIdx,   setSpeakingIdx]   = useState<number | null>(null); // null = full script
+  const [voices,        setVoices]        = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceIdx,      setVoiceIdx]      = useState(0);
+  const [speechRate,    setSpeechRate]    = useState(0.92);
 
   // Stepper
-  const [step, setStep] = useState(0);
+  const [step, setStep]       = useState(0);
   const [creating, setCreating] = useState(false);
 
   const currentStyle = PRODUCTION_STYLES.find(s => s.value === style)!;
+  const imageAssets  = assets.filter(a => a.mimeType.startsWith('image/') && a.url);
 
-  // Media library image assets for character assignment
-  const imageAssets = assets.filter(a => a.mimeType.startsWith('image/') && a.url);
+  // ── Load speech voices ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const load = () => {
+      const v = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
+      if (v.length) setVoices(v);
+    };
+    load();
+    window.speechSynthesis.addEventListener('voiceschanged', load);
+    return () => {
+      window.speechSynthesis.removeEventListener('voiceschanged', load);
+      window.speechSynthesis.cancel();
+    };
+  }, []);
 
   // ── Canvas re-render ────────────────────────────────────────────────────────
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const scene = story?.scenes[activeScene];
-    renderSceneCanvas(
-      canvas, style, cast,
-      scene?.title ?? currentStyle.label,
-      scene ? scene.sceneNumber : 0,
-    );
+    renderSceneCanvas(canvas, style, cast, scene?.title ?? currentStyle.label, scene ? scene.sceneNumber : 0);
   }, [style, cast, story, activeScene, currentStyle.label]);
 
   useEffect(() => { if (open) redraw(); }, [open, redraw]);
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
-  const toggleCast = (preset: VideoCharacter) => {
-    setCast(prev =>
-      prev.some(c => c.id === preset.id)
-        ? prev.filter(c => c.id !== preset.id)
-        : [...prev, preset],
-    );
+  // ── Speech functions ────────────────────────────────────────────────────────
+  const handleSpeak = useCallback((text: string, idx: number | null) => {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate  = speechRate;
+    u.pitch = 1.0;
+    if (voices[voiceIdx]) u.voice = voices[voiceIdx];
+    u.onstart = () => { setSpeaking(true);  setSpeakingIdx(idx); };
+    u.onend   = () => { setSpeaking(false); setSpeakingIdx(null); };
+    u.onerror = () => { setSpeaking(false); setSpeakingIdx(null); };
+    utteranceRef.current = u;
+    window.speechSynthesis.speak(u);
+  }, [speechRate, voices, voiceIdx]);
+
+  const handleStop = useCallback(() => {
+    window.speechSynthesis.cancel();
+    setSpeaking(false);
+    setSpeakingIdx(null);
+  }, []);
+
+  // ── Prompt auto-configure ───────────────────────────────────────────────────
+  const handleApplyPrompt = () => {
+    if (!promptText.trim()) return;
+    const parsed = parseVideoPrompt(promptText);
+    setGenre(parsed.genre);
+    setStyle(parsed.style);
+    setPremise(parsed.premise);
+    setPromptApplied(true);
   };
 
+  // ── Story generation ────────────────────────────────────────────────────────
   const handleGenerate = async () => {
-    if (!premise.trim() || cast.length === 0) return;
+    const effectivePremise = premise.trim() || promptText.trim();
+    if (!effectivePremise || cast.length === 0) return;
     setGenerating(true);
     setStory(null);
     try {
-      const result = await generateVideoStory({ premise, genre, cast, productionStyle: style, durationMin: duration });
+      const result = await generateVideoStory({ premise: effectivePremise, genre, cast, productionStyle: style, durationMin: duration });
       setStory(result);
       setActiveScene(0);
     } finally {
@@ -479,6 +541,7 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
     }
   };
 
+  // ── Add to library ──────────────────────────────────────────────────────────
   const handleAddToLibrary = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -502,88 +565,163 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
   };
 
   const handleClose = () => {
-    setStep(0); setStory(null); setPremise(''); setActiveScene(0);
+    handleStop();
+    setStep(0); setStory(null); setPremise(''); setActiveScene(0); setPromptText(''); setPromptApplied(false);
     setCast([CHARACTER_PRESETS[0], CHARACTER_PRESETS[1]]);
     setStyle('animated'); setGenre('adventure'); setDuration(5);
     onClose();
   };
 
-  // ── Step content ─────────────────────────────────────────────────────────────
+  // ── Cast helpers ────────────────────────────────────────────────────────────
+  const toggleCast = (preset: VideoCharacter) => {
+    setCast(prev => prev.some(c => c.id === preset.id) ? prev.filter(c => c.id !== preset.id) : [...prev, preset]);
+  };
 
-  const stepConcept = (
-    <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
-      {/* Style grid */}
-      <Box sx={{ flex: 1 }}>
-        <Typography variant="body2" fontWeight={700} gutterBottom>Visual Style</Typography>
-        <Grid container spacing={1}>
-          {PRODUCTION_STYLES.map(s => (
-            <Grid item xs={6} sm={4} key={s.value}>
-              <Paper
-                variant="outlined"
-                onClick={() => setStyle(s.value)}
-                sx={{
-                  p: 1.25, cursor: 'pointer', textAlign: 'center', borderRadius: 2,
-                  border: style === s.value ? '2px solid' : '1px solid',
-                  borderColor: style === s.value ? 'primary.main' : 'divider',
-                  bgcolor: style === s.value ? 'primary.50' : 'background.paper',
-                  '&:hover': { borderColor: 'primary.light', bgcolor: 'action.hover' },
-                  transition: 'all 0.15s',
-                }}
-              >
-                <Typography variant="h6" sx={{ fontSize: '1.4rem', lineHeight: 1.3 }}>{s.emoji}</Typography>
-                <Typography variant="caption" fontWeight={style === s.value ? 700 : 400} display="block">{s.label}</Typography>
-                <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.58rem' }}>{s.desc}</Typography>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
-
-        <Divider sx={{ my: 2 }} />
-        <Typography variant="body2" fontWeight={700} gutterBottom>Genre</Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-          {GENRES.map(g => (
-            <Chip
-              key={g.value}
-              label={`${g.emoji} ${g.label}`}
-              clickable size="small"
-              variant={genre === g.value ? 'filled' : 'outlined'}
-              color={genre === g.value ? 'secondary' : 'default'}
-              onClick={() => setGenre(g.value)}
+  // ── Audio options panel ─────────────────────────────────────────────────────
+  const audioOptionsPanel = (
+    <Collapse in={showAudioOpts}>
+      <Paper variant="outlined" sx={{ p: 1.5, mt: 1, bgcolor: 'grey.50' }}>
+        <Typography variant="caption" fontWeight={700} display="block" gutterBottom>Audio Settings</Typography>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          {voices.length > 0 && (
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Voice</InputLabel>
+              <Select value={voiceIdx} label="Voice" onChange={e => setVoiceIdx(Number(e.target.value))}>
+                {voices.map((v, i) => (
+                  <MenuItem key={i} value={i}>{v.name} ({v.lang})</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+          <Box sx={{ flex: 1, minWidth: 160 }}>
+            <Typography variant="caption" color="text.secondary">Speed: {speechRate.toFixed(2)}x</Typography>
+            <Slider
+              size="small"
+              value={speechRate}
+              min={0.5} max={2} step={0.05}
+              onChange={(_, v) => setSpeechRate(v as number)}
+              valueLabelDisplay="off"
             />
-          ))}
-        </Box>
-
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" fontWeight={700} gutterBottom>Duration: {duration} min</Typography>
-          <Box component="input" type="range" min={1} max={20} value={duration}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDuration(Number(e.target.value))}
-            style={{ width: '100%', accentColor: '#1565C0' }} />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant="caption" color="text.disabled">1 min</Typography>
-            <Typography variant="caption" color="text.disabled">20 min</Typography>
           </Box>
         </Box>
-      </Box>
+        {voices.length === 0 && (
+          <Typography variant="caption" color="text.disabled">No English voices found — browser TTS will use system default.</Typography>
+        )}
+      </Paper>
+    </Collapse>
+  );
 
-      {/* Live canvas preview */}
-      <Box sx={{ width: { xs: '100%', md: 260 }, flexShrink: 0 }}>
-        <Typography variant="body2" fontWeight={700} gutterBottom>Live Preview</Typography>
-        <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden', bgcolor: '#111' }}>
-          <canvas ref={canvasRef} width={260} height={146} style={{ width: '100%', display: 'block' }} />
+  // ── Step: Concept ──────────────────────────────────────────────────────────
+  const stepConcept = (
+    <Box>
+      {/* Prompt field */}
+      <Paper variant="outlined" sx={{ p: 1.5, mb: 2.5, bgcolor: 'secondary.50', borderColor: 'secondary.200' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1 }}>
+          <BoltIcon sx={{ fontSize: 16, color: 'secondary.main' }} />
+          <Typography variant="body2" fontWeight={700} color="secondary.main">Quick Prompt</Typography>
+          <Typography variant="caption" color="text.disabled">— describe your video, we auto-configure everything</Typography>
         </Box>
-        <Paper variant="outlined" sx={{ mt: 1.5, p: 1.25, bgcolor: 'grey.50' }}>
-          <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">{currentStyle.emoji} {currentStyle.label}</Typography>
-          <Typography variant="caption" color="text.disabled">{currentStyle.desc}</Typography>
-          <Divider sx={{ my: 0.75 }} />
-          <Typography variant="caption" color="text.secondary">{GENRES.find(g => g.value === genre)?.emoji} {GENRES.find(g => g.value === genre)?.label} · {duration} min</Typography>
-        </Paper>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <TextField
+            fullWidth size="small"
+            placeholder='e.g. "A funny animated cartoon about a robot who wants to become a chef" or "Dark cinematic sci-fi thriller on Mars"'
+            value={promptText}
+            onChange={e => { setPromptText(e.target.value); setPromptApplied(false); }}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleApplyPrompt(); } }}
+          />
+          <Button
+            variant="contained" color="secondary" sx={{ flexShrink: 0 }}
+            startIcon={<BoltIcon />}
+            onClick={handleApplyPrompt}
+            disabled={!promptText.trim()}
+          >
+            Configure
+          </Button>
+        </Box>
+        {promptApplied && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.75 }}>
+            <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main' }} />
+            <Typography variant="caption" color="success.main">
+              Auto-configured: {PRODUCTION_STYLES.find(s => s.value === style)?.label} · {GENRES.find(g => g.value === genre)?.label}. Proceed to Cast, then Story to generate.
+            </Typography>
+          </Box>
+        )}
+      </Paper>
+
+      <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
+        {/* Style grid */}
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="body2" fontWeight={700} gutterBottom>Visual Style</Typography>
+          <Grid container spacing={1}>
+            {PRODUCTION_STYLES.map(s => (
+              <Grid item xs={6} sm={4} key={s.value}>
+                <Paper
+                  variant="outlined"
+                  onClick={() => setStyle(s.value)}
+                  sx={{
+                    p: 1.25, cursor: 'pointer', textAlign: 'center', borderRadius: 2,
+                    border: style === s.value ? '2px solid' : '1px solid',
+                    borderColor: style === s.value ? 'primary.main' : 'divider',
+                    bgcolor: style === s.value ? 'primary.50' : 'background.paper',
+                    '&:hover': { borderColor: 'primary.light', bgcolor: 'action.hover' },
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontSize: '1.4rem', lineHeight: 1.3 }}>{s.emoji}</Typography>
+                  <Typography variant="caption" fontWeight={style === s.value ? 700 : 400} display="block">{s.label}</Typography>
+                  <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.58rem' }}>{s.desc}</Typography>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="body2" fontWeight={700} gutterBottom>Genre</Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+            {GENRES.map(g => (
+              <Chip
+                key={g.value}
+                label={`${g.emoji} ${g.label}`}
+                clickable size="small"
+                variant={genre === g.value ? 'filled' : 'outlined'}
+                color={genre === g.value ? 'secondary' : 'default'}
+                onClick={() => setGenre(g.value)}
+              />
+            ))}
+          </Box>
+
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body2" fontWeight={700} gutterBottom>Duration: {duration} min</Typography>
+            <Box component="input" type="range" min={1} max={20} value={duration}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDuration(Number(e.target.value))}
+              style={{ width: '100%', accentColor: '#1565C0' }} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="caption" color="text.disabled">1 min</Typography>
+              <Typography variant="caption" color="text.disabled">20 min</Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Live canvas preview */}
+        <Box sx={{ width: { xs: '100%', md: 260 }, flexShrink: 0 }}>
+          <Typography variant="body2" fontWeight={700} gutterBottom>Live Preview</Typography>
+          <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden', bgcolor: '#111' }}>
+            <canvas ref={canvasRef} width={260} height={146} style={{ width: '100%', display: 'block' }} />
+          </Box>
+          <Paper variant="outlined" sx={{ mt: 1.5, p: 1.25, bgcolor: 'grey.50' }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">{currentStyle.emoji} {currentStyle.label}</Typography>
+            <Typography variant="caption" color="text.disabled">{currentStyle.desc}</Typography>
+            <Divider sx={{ my: 0.75 }} />
+            <Typography variant="caption" color="text.secondary">{GENRES.find(g => g.value === genre)?.emoji} {GENRES.find(g => g.value === genre)?.label} · {duration} min</Typography>
+          </Paper>
+        </Box>
       </Box>
     </Box>
   );
 
+  // ── Step: Cast ─────────────────────────────────────────────────────────────
   const stepCast = (
     <Box>
-      {/* Preset characters */}
       <Typography variant="body2" fontWeight={700} gutterBottom>Character Presets</Typography>
       <Grid container spacing={1} sx={{ mb: 2 }}>
         {CHARACTER_PRESETS.map(preset => {
@@ -615,7 +753,6 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
         })}
       </Grid>
 
-      {/* Characters from media library */}
       {imageAssets.length > 0 && (
         <>
           <Typography variant="body2" fontWeight={700} gutterBottom>From Your Media Library</Typography>
@@ -653,7 +790,6 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
         </>
       )}
 
-      {/* Custom character */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
         <Typography variant="body2" fontWeight={700}>Custom Character</Typography>
         <Chip label={showCustomForm ? 'Hide' : 'Create'} size="small" clickable icon={<AddIcon sx={{ fontSize: '0.8rem !important' }} />}
@@ -665,7 +801,6 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
         </Paper>
       </Collapse>
 
-      {/* Current cast */}
       {cast.length > 0 && (
         <Box sx={{ mt: 2 }}>
           <Typography variant="body2" fontWeight={700} gutterBottom>Your Cast ({cast.length})</Typography>
@@ -686,22 +821,23 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
     </Box>
   );
 
+  // ── Step: Story ────────────────────────────────────────────────────────────
   const stepStory = (
     <Box>
-      {/* Premise + generate */}
       <Typography variant="body2" fontWeight={700} gutterBottom>Story Premise</Typography>
       <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'flex-start' }}>
         <TextField
           fullWidth multiline rows={2} size="small"
-          placeholder={`Describe your story in 1-2 sentences. e.g. "A young scientist discovers a hidden world beneath the ocean that changes everything we know about marine life."`}
-          value={premise} onChange={e => setPremise(e.target.value)}
+          placeholder={promptApplied && promptText ? 'Prompt already applied — click Generate Story below, or refine here.' : 'Describe your story in 1-2 sentences…'}
+          value={premise || promptText}
+          onChange={e => setPremise(e.target.value)}
         />
         <Button
           variant="contained" color="secondary"
           sx={{ flexShrink: 0, alignSelf: 'stretch' }}
           startIcon={generating ? <CircularProgress size={14} color="inherit" /> : <AutoAwesomeIcon />}
           onClick={handleGenerate}
-          disabled={!premise.trim() || cast.length === 0 || generating}
+          disabled={(!premise.trim() && !promptText.trim()) || cast.length === 0 || generating}
         >
           {generating ? 'Generating…' : 'Generate Story'}
         </Button>
@@ -711,78 +847,106 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
         <Alert severity="warning" sx={{ mb: 1 }}>Add at least one character in the Cast step before generating.</Alert>
       )}
 
-      {/* Story display */}
       {story && (
         <Box>
-          {/* Logline */}
           <Paper variant="outlined" sx={{ p: 1.5, mb: 2, bgcolor: 'secondary.50', borderColor: 'secondary.200' }}>
             <Typography variant="caption" fontWeight={700} color="secondary.main" display="block">LOGLINE</Typography>
             <Typography variant="body2" fontStyle="italic">"{story.logline}"</Typography>
           </Paper>
 
-          {/* Scene cards */}
           <Typography variant="body2" fontWeight={700} gutterBottom>
             {story.scenes.length} Scenes · ~{Math.round(story.totalDuration / 60)} min total
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {story.scenes.map((scene, i) => (
-              <Card
-                key={i}
-                variant={activeScene === i ? 'elevation' : 'outlined'}
-                elevation={activeScene === i ? 2 : 0}
-                onClick={() => setActiveScene(i)}
-                sx={{
-                  cursor: 'pointer',
-                  border: activeScene === i ? '2px solid' : '1px solid',
-                  borderColor: activeScene === i ? 'secondary.main' : 'divider',
-                  transition: 'all 0.12s',
-                }}
-              >
-                <CardContent sx={{ py: '10px !important', px: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-                    <Avatar sx={{ width: 28, height: 28, bgcolor: 'secondary.main', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-                      {scene.sceneNumber}
-                    </Avatar>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" fontWeight={600}>{scene.title}</Typography>
-                      <Typography variant="caption" color="text.secondary" display="block">{scene.setting}</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                        {scene.characters.map(n => {
-                          const ch = cast.find(c => c.name === n);
-                          return (
-                            <Chip key={n} label={n} size="small"
-                              avatar={ch ? <Avatar sx={{ bgcolor: ch.color, fontSize: '0.65rem' }}>{ch.emoji}</Avatar> : undefined}
-                              sx={{ height: 18, fontSize: '0.6rem' }} />
-                          );
-                        })}
-                        <Chip label={`~${scene.duration}s`} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.6rem' }} />
+            {story.scenes.map((scene, i) => {
+              const isActive = activeScene === i;
+              const isSpeakingThis = speaking && speakingIdx === i;
+              return (
+                <Card
+                  key={i}
+                  variant={isActive ? 'elevation' : 'outlined'}
+                  elevation={isActive ? 2 : 0}
+                  onClick={() => setActiveScene(i)}
+                  sx={{
+                    cursor: 'pointer',
+                    border: isActive ? '2px solid' : '1px solid',
+                    borderColor: isActive ? 'secondary.main' : 'divider',
+                    transition: 'all 0.12s',
+                  }}
+                >
+                  <CardContent sx={{ py: '10px !important', px: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                      <Avatar sx={{ width: 28, height: 28, bgcolor: 'secondary.main', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                        {scene.sceneNumber}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="body2" fontWeight={600}>{scene.title}</Typography>
+                        <Typography variant="caption" color="text.secondary" display="block">{scene.setting}</Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                          {scene.characters.map(n => {
+                            const ch = cast.find(c => c.name === n);
+                            return (
+                              <Chip key={n} label={n} size="small"
+                                avatar={ch ? <Avatar sx={{ bgcolor: ch.color, fontSize: '0.65rem' }}>{ch.emoji}</Avatar> : undefined}
+                                sx={{ height: 18, fontSize: '0.6rem' }} />
+                            );
+                          })}
+                          <Chip label={`~${scene.duration}s`} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.6rem' }} />
+                        </Box>
                       </Box>
+                      {/* Play/stop button */}
+                      <Tooltip title={isSpeakingThis ? 'Stop narration' : 'Play scene narration'}>
+                        <IconButton
+                          size="small"
+                          onClick={e => { e.stopPropagation(); isSpeakingThis ? handleStop() : handleSpeak(scene.narration, i); }}
+                          sx={{ color: isSpeakingThis ? 'error.main' : 'secondary.main', flexShrink: 0 }}
+                        >
+                          {isSpeakingThis ? <StopIcon sx={{ fontSize: 16 }} /> : <PlayArrowIcon sx={{ fontSize: 16 }} />}
+                        </IconButton>
+                      </Tooltip>
+                      {isSpeakingThis && <AudioWave active={true} />}
                     </Box>
-                  </Box>
-                  {activeScene === i && (
-                    <Box sx={{ mt: 1, pl: 4.5 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', display: 'block', lineHeight: 1.5 }}>
-                        <MicIcon sx={{ fontSize: 11, mr: 0.5, verticalAlign: 'middle' }} />
-                        "{scene.narration}"
-                      </Typography>
-                      <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem', display: 'block', mt: 0.5 }}>
-                        Visual: {scene.visualNote}
-                      </Typography>
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                    {isActive && (
+                      <Box sx={{ mt: 1, pl: 4.5 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', display: 'block', lineHeight: 1.5 }}>
+                          <MicIcon sx={{ fontSize: 11, mr: 0.5, verticalAlign: 'middle' }} />
+                          "{scene.narration}"
+                        </Typography>
+                        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem', display: 'block', mt: 0.5 }}>
+                          Visual: {scene.visualNote}
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </Box>
 
-          {/* Full script toggle */}
+          {/* Full narration script */}
           <Box sx={{ mt: 2 }}>
-            <Chip
-              icon={<MenuBookIcon sx={{ fontSize: '0.85rem !important' }} />}
-              label={showFullScript ? 'Hide full narration script' : 'View full narration script'}
-              size="small" clickable variant={showFullScript ? 'filled' : 'outlined'} color="primary"
-              onClick={() => setShowFullScript(v => !v)}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip
+                icon={<MenuBookIcon sx={{ fontSize: '0.85rem !important' }} />}
+                label={showFullScript ? 'Hide narration script' : 'View full narration script'}
+                size="small" clickable variant={showFullScript ? 'filled' : 'outlined'} color="primary"
+                onClick={() => setShowFullScript(v => !v)}
+              />
+              {showFullScript && (
+                <Tooltip title={speaking && speakingIdx === null ? 'Stop' : 'Read full script aloud'}>
+                  <IconButton
+                    size="small"
+                    onClick={() => (speaking && speakingIdx === null) ? handleStop() : handleSpeak(story.narrationScript, null)}
+                    sx={{ color: (speaking && speakingIdx === null) ? 'error.main' : 'primary.main' }}
+                  >
+                    {(speaking && speakingIdx === null)
+                      ? <StopIcon sx={{ fontSize: 16 }} />
+                      : <VolumeUpIcon sx={{ fontSize: 16 }} />}
+                  </IconButton>
+                </Tooltip>
+              )}
+              {speaking && speakingIdx === null && <AudioWave active={true} color="primary.main" />}
+            </Box>
             <Collapse in={showFullScript}>
               <Paper variant="outlined" sx={{ mt: 1, p: 1.5, bgcolor: 'grey.50', maxHeight: 240, overflow: 'auto' }}>
                 <Typography component="pre" variant="caption" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: '0.7rem', color: 'text.secondary' }}>
@@ -796,6 +960,8 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
     </Box>
   );
 
+  // ── Step: Preview ──────────────────────────────────────────────────────────
+  const activeSceneData = story?.scenes[activeScene];
   const stepPreview = (
     <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
       {/* Main canvas */}
@@ -827,10 +993,42 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
                 </Box>
               </Tooltip>
             ))}
-            <IconButton size="small" onClick={() => setActiveScene(s => Math.min(story.scenes.length - 1, s + 1))} disabled={activeScene === story!.scenes.length - 1}>
+            <IconButton size="small" onClick={() => setActiveScene(s => Math.min(story.scenes.length - 1, s + 1))} disabled={activeScene === story.scenes.length - 1}>
               <NavigateNextIcon />
             </IconButton>
           </Box>
+        )}
+
+        {/* Audio panel for preview */}
+        {activeSceneData && (
+          <Paper variant="outlined" sx={{ mt: 1.5, p: 1.25, bgcolor: 'grey.50' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <MicIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+              <Typography variant="caption" fontWeight={700} color="text.secondary">Scene {activeSceneData.sceneNumber} Narration</Typography>
+              <Box sx={{ flex: 1 }} />
+              <Tooltip title={speaking && speakingIdx === activeScene ? 'Stop' : 'Play narration'}>
+                <IconButton
+                  size="small"
+                  onClick={() => (speaking && speakingIdx === activeScene) ? handleStop() : handleSpeak(activeSceneData.narration, activeScene)}
+                  sx={{ color: (speaking && speakingIdx === activeScene) ? 'error.main' : 'secondary.main' }}
+                >
+                  {(speaking && speakingIdx === activeScene)
+                    ? <StopIcon sx={{ fontSize: 18 }} />
+                    : <PlayArrowIcon sx={{ fontSize: 18 }} />}
+                </IconButton>
+              </Tooltip>
+              {speaking && speakingIdx === activeScene && <AudioWave active={true} />}
+              <Tooltip title="Audio settings">
+                <IconButton size="small" onClick={() => setShowAudioOpts(v => !v)} color={showAudioOpts ? 'secondary' : 'default'}>
+                  <TuneIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', lineHeight: 1.5, display: 'block' }}>
+              "{activeSceneData.narration}"
+            </Typography>
+            {audioOptionsPanel}
+          </Paper>
         )}
       </Box>
 
@@ -873,12 +1071,11 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
     </Box>
   );
 
-  const steps = [stepConcept, stepCast, stepStory, stepPreview];
+  const stepsContent = [stepConcept, stepCast, stepStory, stepPreview];
   const canNext = step < 3 && (
     step === 0 ? true :
     step === 1 ? cast.length > 0 :
-    step === 2 ? true :
-    false
+    true
   );
 
   return (
@@ -903,7 +1100,7 @@ export default function VideoCreatorDialog({ open, onClose }: { open: boolean; o
       <Divider />
 
       <DialogContent sx={{ flex: 1, overflow: 'auto', pt: 2 }}>
-        {steps[step]}
+        {stepsContent[step]}
       </DialogContent>
 
       <Divider />

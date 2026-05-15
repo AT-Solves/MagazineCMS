@@ -54,6 +54,40 @@ const GRADIENT_PRESETS = [
   { label: 'Custom',        from: '#1565C0', to: '#0288D1' },
 ];
 
+// ── Image prompt parser ───────────────────────────────────────────────────────
+function parseImagePrompt(text: string): {
+  presetIdx: number; fromColor: string; toColor: string; gradientIdx: number;
+  direction: 'horizontal' | 'vertical' | 'diagonal'; titleText: string;
+} {
+  const p = text.toLowerCase();
+
+  let fromColor = '#1565C0', toColor = '#0288D1', gradientIdx = 0;
+  if (/ocean|sea|water|marine|aquatic|blue|wave/.test(p))         { fromColor = '#1565C0'; toColor = '#0288D1'; gradientIdx = 0; }
+  else if (/forest|nature|green|jungle|plant|tree|leaf/.test(p))  { fromColor = '#2E7D32'; toColor = '#66BB6A'; gradientIdx = 1; }
+  else if (/purple|lavender|violet|magic|mystical/.test(p))       { fromColor = '#6A1B9A'; toColor = '#BA68C8'; gradientIdx = 2; }
+  else if (/sunset|warm|fire|orange|autumn|fall|amber/.test(p))   { fromColor = '#E65100'; toColor = '#FF8A65'; gradientIdx = 3; }
+  else if (/teal|cyan|turquoise|aqua|fresh|mint/.test(p))         { fromColor = '#00838F'; toColor = '#4DD0E1'; gradientIdx = 4; }
+  else if (/pink|rose|romantic|cherry|love|blossom/.test(p))      { fromColor = '#AD1457'; toColor = '#F06292'; gradientIdx = 5; }
+  else if (/dark|night|midnight|space|black|noir|moody/.test(p))  { fromColor = '#212121'; toColor = '#424242'; gradientIdx = 6; }
+
+  let presetIdx = 1;
+  if (/banner|hero|header|wide|panorama/.test(p))   presetIdx = 0;
+  else if (/portrait|tall|vertical|person/.test(p)) presetIdx = 2;
+  else if (/square|instagram|social/.test(p))        presetIdx = 3;
+  else if (/pull.?quote|quote/.test(p))              presetIdx = 4;
+  else if (/half|column|small/.test(p))              presetIdx = 5;
+
+  let direction: 'horizontal' | 'vertical' | 'diagonal' = 'diagonal';
+  if (/horizontal|left.to.right|sideways/.test(p)) direction = 'horizontal';
+  else if (/vertical|top.to.bottom|upward/.test(p)) direction = 'vertical';
+
+  const quotedMatch  = text.match(/[""]([^""]+)[""]/);
+  const titledMatch  = text.match(/(?:titled?|called?|showing?|with text|says?|captioned?)\s+["']?([^"',.\n]{3,40})/i);
+  const titleText = quotedMatch ? quotedMatch[1] : titledMatch ? titledMatch[1].trim() : '';
+
+  return { presetIdx, fromColor, toColor, gradientIdx, direction, titleText };
+}
+
 function hexToRgb(hex: string) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -332,6 +366,8 @@ function CreateImageDialog({ open, onClose }: { open: boolean; onClose: () => vo
   const [subtitleText, setSubtitleText] = useState('');
   const [fontFamily, setFontFamily] = useState('Georgia, serif');
   const [creating, setCreating] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState('');
+  const [promptApplied, setPromptApplied] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const preset = IMAGE_PRESETS[presetIdx];
@@ -375,6 +411,18 @@ function CreateImageDialog({ open, onClose }: { open: boolean; onClose: () => vo
     }
   };
 
+  const handleApplyImagePrompt = () => {
+    if (!imagePrompt.trim()) return;
+    const p = parseImagePrompt(imagePrompt);
+    setPresetIdx(p.presetIdx);
+    setFromColor(p.fromColor);
+    setToColor(p.toColor);
+    setGradientIdx(p.gradientIdx);
+    setDirection(p.direction);
+    if (p.titleText) setTitleText(p.titleText);
+    setPromptApplied(true);
+  };
+
   const handleCreate = async () => {
     if (!width || !height) return;
     setCreating(true);
@@ -403,6 +451,34 @@ function CreateImageDialog({ open, onClose }: { open: boolean; onClose: () => vo
         <AddPhotoAlternateIcon color="primary" /> Create Image
       </DialogTitle>
       <DialogContent>
+        {/* Prompt field */}
+        <Paper variant="outlined" sx={{ p: 1.5, mb: 2, bgcolor: 'primary.50', borderColor: 'primary.200' }}>
+          <Typography variant="body2" fontWeight={700} color="primary.main" gutterBottom>
+            ✨ Describe Your Image
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              fullWidth size="small"
+              placeholder='e.g. "A dark midnight portrait banner" or "Ocean blue hero image titled Breaking News"'
+              value={imagePrompt}
+              onChange={e => { setImagePrompt(e.target.value); setPromptApplied(false); }}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleApplyImagePrompt(); } }}
+            />
+            <Button
+              variant="contained" sx={{ flexShrink: 0 }}
+              onClick={handleApplyImagePrompt}
+              disabled={!imagePrompt.trim()}
+            >
+              Generate
+            </Button>
+          </Box>
+          {promptApplied && (
+            <Typography variant="caption" color="success.main" sx={{ mt: 0.5, display: 'block' }}>
+              ✓ Settings applied from prompt — preview updated.
+            </Typography>
+          )}
+        </Paper>
+
         <Grid container spacing={3}>
           {/* Left: controls */}
           <Grid item xs={12} md={7}>
